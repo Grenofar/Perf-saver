@@ -1,0 +1,693 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Perf Saver</title>
+<style>
+:root{
+  --bg:#0a0d12;--side:#0d1117;--panel:#11161e;--panel2:#161c26;--hover:#1a212d;--line:#1f2733;--line2:#2a3342;
+  --text:#e8edf4;--mute:#8a95a8;--dim:#5d6878;
+  --acc:#00e5a0;--acc-d:#00b37d;--acc-bg:rgba(0,229,160,.09);
+  --warn:#ffb648;--warn-bg:rgba(255,182,72,.1);--bad:#ff5d6c;--bad-bg:rgba(255,93,108,.1);--blue:#5aa9ff;--violet:#b48cff;
+  --r:10px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:13.5px/1.5 "Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;overflow:hidden;-webkit-font-smoothing:antialiased}
+::selection{background:var(--acc-bg)}
+::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:#232b38;border-radius:10px;border:3px solid var(--bg)}::-webkit-scrollbar-track{background:transparent}
+svg.i{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+button{font:inherit;color:var(--text);cursor:pointer;border:1px solid var(--line2);background:var(--panel2);padding:7px 13px;border-radius:8px;display:inline-flex;align-items:center;gap:7px;transition:background .15s,border-color .15s}
+button:hover{background:var(--hover);border-color:#3a4558}
+button.pri{background:var(--acc);color:#03140d;border-color:var(--acc);font-weight:600}
+button.pri:hover{background:#2bf0b3;border-color:#2bf0b3}
+button.ghost{background:transparent;border-color:transparent;color:var(--mute)}
+button.ghost:hover{color:var(--text);background:var(--hover)}
+button.danger{color:var(--bad)}
+button.danger:hover{background:var(--bad-bg);border-color:#5a2a33}
+button.sm{padding:4px 9px;font-size:12px;border-radius:7px}
+button.icon{padding:5px;border-radius:7px}
+button:disabled{opacity:.5;cursor:default}
+input[type=text]{background:var(--panel2);border:1px solid var(--line2);color:var(--text);padding:7px 10px 7px 32px;border-radius:8px;font:inherit;width:260px;outline:none}
+input[type=text]:focus{border-color:var(--acc-d)}
+select{background:var(--panel2);border:1px solid var(--line2);color:var(--text);padding:7px 10px;border-radius:8px;font:inherit;outline:none}
+.app{display:grid;grid-template-columns:224px 1fr;height:100vh}
+
+/* barre latérale */
+nav{background:var(--side);border-right:1px solid var(--line);padding:16px 10px;display:flex;flex-direction:column;gap:1px}
+.brand{display:flex;align-items:center;gap:10px;padding:2px 10px 20px}
+.brand b{font-size:15px;letter-spacing:.2px}
+.brand small{display:block;color:var(--dim);font-size:11px;font-weight:400;margin-top:-2px}
+.navlbl{color:var(--dim);font-size:10.5px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;padding:14px 12px 6px}
+nav a{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;color:var(--mute);cursor:pointer;user-select:none;transition:background .12s,color .12s}
+nav a:hover{background:var(--panel);color:var(--text)}
+nav a.on{background:var(--panel2);color:var(--text)}
+nav a.on svg{color:var(--acc)}
+nav a .badge{margin-left:auto}
+.badge{background:var(--bad);color:#fff;border-radius:10px;padding:0 7px;font-size:11px;font-weight:700;line-height:18px}
+.badge.w{background:var(--warn);color:#1a1200}
+.gmpill{margin-top:auto;border:1px solid var(--line);border-radius:var(--r);padding:12px;background:var(--panel)}
+.gmpill .t{display:flex;align-items:center;gap:8px;font-weight:600}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--dim)}
+.dot.on{background:var(--acc);box-shadow:0 0 0 3px var(--acc-bg)}
+.gmpill p{margin:4px 0 10px;color:var(--mute);font-size:12px}
+.gmpill button{width:100%;justify-content:center}
+
+/* contenu */
+main{overflow:auto}
+.page{padding:26px 32px 40px;max-width:1280px}
+.head{display:flex;align-items:flex-end;gap:16px;margin-bottom:20px}
+.head h1{font-size:21px;font-weight:650;margin:0;letter-spacing:-.2px}
+.head p{color:var(--mute);margin:3px 0 0}
+.head .sp{flex:1}
+.grid{display:grid;gap:14px}
+.g4{grid-template-columns:repeat(4,1fr)}
+.g2{grid-template-columns:1.25fr 1fr}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px}
+.card.flush{padding:0;overflow:hidden}
+.ctitle{display:flex;align-items:center;gap:8px;margin:0 0 12px;font-size:12px;color:var(--mute);font-weight:600;letter-spacing:.5px;text-transform:uppercase}
+.ctitle .sp{flex:1}
+.stat .v{font-size:26px;font-weight:650;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
+.stat .s{color:var(--dim);font-size:12px;margin-top:2px}
+.bar{height:5px;background:var(--panel2);border-radius:4px;overflow:hidden;margin-top:10px}
+.bar i{display:block;height:100%;background:var(--acc);transition:width .5s ease}
+.bar i.w{background:var(--warn)}.bar i.b{background:var(--bad)}
+.hero{display:flex;align-items:center;gap:18px;padding:20px 22px;background:linear-gradient(120deg,#111b1a 0%,var(--panel) 55%);border-color:#1d2f2a}
+.hero .ic{width:46px;height:46px;border-radius:12px;background:var(--acc-bg);display:grid;place-items:center;color:var(--acc)}
+.hero .ic svg{width:24px;height:24px}
+.hero h2{margin:0;font-size:17px;font-weight:650}
+.hero p{margin:2px 0 0;color:var(--mute)}
+.hero .sp{flex:1}
+.big{padding:11px 22px;font-size:14px;border-radius:9px}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.sp{flex:1}
+.search{position:relative}
+.search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--dim)}
+
+table{width:100%;border-collapse:collapse}
+th{text-align:left;color:var(--dim);font-weight:600;font-size:11.5px;letter-spacing:.3px;padding:10px 14px;border-bottom:1px solid var(--line);cursor:pointer;user-select:none;position:sticky;top:0;background:var(--panel);white-space:nowrap}
+th:hover{color:var(--text)}
+th.s:after{content:" ↓";color:var(--acc)}th.s.asc:after{content:" ↑"}
+td{padding:9px 14px;border-bottom:1px solid #181e28;vertical-align:middle}
+tbody tr:hover td{background:#141a23}
+tbody tr:last-child td{border-bottom:0}
+.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.nm{font-weight:600}
+.path{color:var(--dim);font-size:11.5px;word-break:break-all}
+.acts{display:flex;gap:4px;justify-content:flex-end;opacity:.55;transition:opacity .15s}
+tr:hover .acts,.item:hover .acts{opacity:1}
+.tag{display:inline-flex;align-items:center;font-size:11px;font-weight:500;padding:1px 8px;border-radius:20px;background:var(--panel2);color:var(--mute);white-space:nowrap;line-height:18px}
+.t-jeu{color:var(--acc);background:var(--acc-bg)}.t-inutile{color:var(--bad);background:var(--bad-bg)}
+.t-materiel{color:var(--warn);background:var(--warn-bg)}.t-appli{color:var(--blue);background:rgba(90,169,255,.1)}
+.t-launcher{color:var(--violet);background:rgba(180,140,255,.1)}.t-systeme{color:var(--dim)}
+.alert{color:var(--bad);font-size:12px;display:flex;gap:6px;align-items:center;margin-top:2px}
+.alert svg{width:13px;height:13px}
+.list{display:flex;flex-direction:column}
+.item{display:flex;align-items:center;gap:12px;padding:10px 2px;border-bottom:1px solid #181e28}
+.item:last-child{border-bottom:0}
+.item .grow{flex:1;min-width:0}
+.item .meta{color:var(--mute);font-size:12px}
+label.item{cursor:pointer}
+.sw{position:relative;width:36px;height:20px;flex:none}
+.sw input{opacity:0;width:0;height:0;position:absolute}
+.sw span{position:absolute;inset:0;background:#283041;border-radius:20px;transition:.2s;cursor:pointer}
+.sw span:before{content:"";position:absolute;width:14px;height:14px;left:3px;top:3px;background:#c6cede;border-radius:50%;transition:.2s}
+.sw input:checked+span{background:var(--acc-d)}
+.sw input:checked+span:before{transform:translateX(16px);background:#fff}
+.sw input:disabled+span{opacity:.5}
+input[type=checkbox]{accent-color:var(--acc);width:15px;height:15px;flex:none;margin:0}
+.sec{margin:22px 0 8px;font-weight:600;font-size:13px;display:flex;align-items:center;gap:8px;color:var(--text)}
+.sec .n{color:var(--dim);font-weight:400}
+.subsec{color:var(--mute);font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;padding:14px 2px 4px}
+.subsec:first-child{padding-top:0}
+.ok{color:var(--acc)}
+.empty{color:var(--mute);padding:16px 2px;display:flex;align-items:center;gap:8px}
+.notice{display:flex;gap:10px;padding:12px 14px;border-radius:var(--r);background:var(--panel);border:1px solid var(--line);color:var(--mute);font-size:12.5px;margin-top:16px}
+.notice svg{color:var(--warn);margin-top:2px}
+.report{margin-top:14px;border-top:1px solid var(--line);padding-top:12px;display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--mute)}
+.report:empty{display:none}
+.report div{display:flex;gap:8px;align-items:flex-start}
+.report svg{width:14px;height:14px;margin-top:2px}
+.report .k svg{color:var(--acc)}.report .e svg{color:var(--bad)}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid var(--line2);border-top-color:var(--acc);border-radius:50%;animation:r .8s linear infinite;flex:none}
+@keyframes r{to{transform:rotate(360deg)}}
+.hidden{display:none!important}
+.toast{position:fixed;right:22px;bottom:22px;background:var(--panel2);border:1px solid var(--line2);padding:11px 16px 11px 14px;border-radius:10px;max-width:420px;box-shadow:0 10px 40px #000a;opacity:0;transform:translateY(8px);transition:.22s;pointer-events:none;white-space:pre-line;display:flex;gap:10px;z-index:50}
+.toast.show{opacity:1;transform:none}
+.toast svg{color:var(--acc);margin-top:2px}.toast.err svg{color:var(--bad)}
+.kv{display:grid;grid-template-columns:180px 1fr;gap:8px 16px;font-size:13px}
+.kv span:nth-child(odd){color:var(--mute)}
+a.link{color:var(--acc);text-decoration:none;cursor:pointer}a.link:hover{text-decoration:underline}
+code{font-family:"Cascadia Code",Consolas,monospace;font-size:12px;background:var(--panel2);padding:1px 5px;border-radius:4px}
+
+/* fenêtre modale */
+.modal{position:fixed;inset:0;background:rgba(4,6,10,.72);backdrop-filter:blur(4px);display:grid;place-items:center;z-index:40}
+.dlg{width:min(620px,92vw);max-height:88vh;display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line2);border-radius:14px;box-shadow:0 30px 80px #000c}
+.dlg header{padding:22px 24px 6px;display:flex;gap:14px;align-items:center}
+.dlg header h2{margin:0;font-size:18px}
+.dlg header p{margin:2px 0 0;color:var(--mute)}
+.dlg .body{padding:10px 24px;overflow:auto;color:#c9d1dd;font-size:13px}
+.dlg .body h4{margin:14px 0 4px;color:var(--text);font-size:13px}
+.dlg .body p{margin:0 0 6px}
+.dlg footer{padding:16px 24px 20px;display:flex;gap:10px;align-items:center;border-top:1px solid var(--line)}
+.legalbox{border:1px solid var(--line);border-radius:10px;padding:4px 16px 10px;background:var(--bg);max-height:46vh;overflow:auto}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
+    <symbol id="i-game" viewBox="0 0 24 24"><path d="M6 8h12a4 4 0 0 1 4 4v1.5a3.5 3.5 0 0 1-6.3 2.1L14.5 14h-5l-1.2 1.6A3.5 3.5 0 0 1 2 13.5V12a4 4 0 0 1 4-4z"/><path d="M7 11v3M5.5 12.5h3"/><circle cx="16" cy="11.5" r=".6"/><circle cx="18" cy="13.5" r=".6"/></symbol>
+    <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></symbol>
+    <symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17.2v.1"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></symbol>
+    <symbol id="i-power" viewBox="0 0 24 24"><path d="M12 3v8"/><path d="M6.3 7.2a8 8 0 1 0 11.4 0"/></symbol>
+    <symbol id="i-cog" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></symbol>
+    <symbol id="i-server" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="7" rx="1.5"/><rect x="3" y="13" width="18" height="7" rx="1.5"/><path d="M7 7.5h.01M7 16.5h.01"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 4.5 3.4 8 8 9 4.6-1 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+    <symbol id="i-cpu" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1.5"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/></symbol>
+    <symbol id="i-mem" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="10" rx="1.5"/><path d="M6 11v2M10 11v2M14 11v2M18 11v2M6 17v3M18 17v3"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4L21 8"/><path d="M21 3v5h-5"/></symbol>
+    <symbol id="i-sweep" viewBox="0 0 24 24"><path d="M3 21h18"/><path d="m14 4 6 6"/><path d="M5 17 15.5 6.5l2 2L7 19H5z"/></symbol>
+    <symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5M8 13h8M8 17h6"/></symbol>
+    <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M4.2 18a9 9 0 1 1 15.6 0"/><path d="m12 13 4-5"/><circle cx="12" cy="13" r="1.4"/></symbol>
+  </defs>
+</svg>
+<svg width="0" height="0"></svg>
+
+<div class="app">
+  <nav>
+    <div class="brand">
+      <svg width="30" height="30" viewBox="0 0 64 64"><rect x="2" y="2" width="60" height="60" rx="15" fill="#10141c"/><path d="M14.5 44A21 21 0 1 1 49.5 44" fill="none" stroke="#2f3848" stroke-width="5.5" stroke-linecap="round"/><path d="M14.5 44A21 21 0 0 1 43.8 19.6" fill="none" stroke="#00e5a0" stroke-width="5.5" stroke-linecap="round"/><path d="M32 37 43 24" stroke="#fff" stroke-width="4.5" stroke-linecap="round"/><circle cx="32" cy="37" r="4.6" fill="#fff"/></svg>
+      <div><b>Perf Saver</b><small id="ver">Optimiseur pour le jeu</small></div>
+    </div>
+    <a data-v="home" class="on"><svg class="i"><use href="#i-home"/></svg>Vue d'ensemble</a>
+    <a data-v="game"><svg class="i"><use href="#i-game"/></svg>Mode jeu</a>
+    <a data-v="issues"><svg class="i"><use href="#i-bolt"/></svg>Ce qui ralentit <span id="bIssues" class="badge w hidden"></span></a>
+    <div class="navlbl">Système</div>
+    <a data-v="procs"><svg class="i"><use href="#i-list"/></svg>Processus</a>
+    <a data-v="startup"><svg class="i"><use href="#i-power"/></svg>Démarrage</a>
+    <a data-v="services"><svg class="i"><use href="#i-server"/></svg>Services</a>
+    <a data-v="security"><svg class="i"><use href="#i-shield"/></svg>Sécurité <span id="bSec" class="badge hidden"></span></a>
+    <div class="navlbl">Application</div>
+    <a data-v="settings"><svg class="i"><use href="#i-sliders"/></svg>Paramètres</a>
+    <div class="gmpill">
+      <div class="t"><span class="dot" id="gmDot"></span><span id="gmPillTxt">Mode jeu inactif</span></div>
+      <p id="gmPillSub">Prêt à optimiser.</p>
+      <button class="pri" id="gmPillBtn"><svg class="i"><use href="#i-bolt"/></svg><span>Activer</span></button>
+    </div>
+  </nav>
+  <main>
+
+    <!-- VUE D'ENSEMBLE -->
+    <section class="page" id="v-home">
+      <div class="head"><div><h1>Vue d'ensemble</h1><p>État de ton PC en temps réel.</p></div></div>
+      <div class="grid g4">
+        <div class="card stat"><div class="ctitle"><svg class="i"><use href="#i-cpu"/></svg>Processeur</div><div class="v" id="cpu">–</div><div class="s" id="cpuTxt">&nbsp;</div><div class="bar"><i id="cpuBar" style="width:0"></i></div></div>
+        <div class="card stat"><div class="ctitle"><svg class="i"><use href="#i-mem"/></svg>Mémoire</div><div class="v" id="ram">–</div><div class="s" id="ramTxt">&nbsp;</div><div class="bar"><i id="ramBar" style="width:0"></i></div></div>
+        <div class="card stat"><div class="ctitle"><svg class="i"><use href="#i-list"/></svg>Processus</div><div class="v" id="nproc">–</div><div class="s" id="nprocTxt">&nbsp;</div></div>
+        <div class="card stat"><div class="ctitle"><svg class="i"><use href="#i-shield"/></svg>Sécurité</div><div class="v" id="secV">–</div><div class="s" id="secTxt">&nbsp;</div></div>
+      </div>
+      <div class="card hero" style="margin-top:14px">
+        <div class="ic"><svg class="i"><use href="#i-game"/></svg></div>
+        <div><h2 id="heroT">Mode jeu inactif</h2><p id="heroS">Aucun jeu détecté pour l'instant.</p></div>
+        <div class="sp"></div>
+        <button id="btnRam"><svg class="i"><use href="#i-sweep"/></svg><span>Libérer la RAM</span></button>
+        <button class="pri big" id="heroBtn"><svg class="i"><use href="#i-bolt"/></svg><span>Activer le mode jeu</span></button>
+      </div>
+      <div class="grid g2" style="margin-top:14px">
+        <div class="card"><div class="ctitle">Plus gros consommateurs<span class="sp"></span><a class="link" style="text-transform:none;letter-spacing:0;font-weight:500" data-go="procs">Tout voir</a></div><div class="list" id="topList"></div></div>
+        <div class="card"><div class="ctitle">Résumé</div><div class="list" id="summary"></div></div>
+      </div>
+    </section>
+
+    <!-- MODE JEU -->
+    <section class="page hidden" id="v-game">
+      <div class="head"><div><h1>Mode jeu</h1><p>Choisis ce qui est fermé ou mis en pause pendant que tu joues. Tout est restauré à la désactivation.</p></div></div>
+      <div class="card">
+        <div class="row">
+          <span class="dot" id="gmDot2"></span><b id="gmState2" style="font-size:15px">Mode jeu inactif</b>
+          <div class="sp"></div>
+          <button id="gmOff" class="hidden"><svg class="i"><use href="#i-refresh"/></svg>Désactiver et restaurer</button>
+          <button class="pri big" id="gmOn"><svg class="i"><use href="#i-bolt"/></svg><span>Activer le mode jeu</span></button>
+        </div>
+        <div class="report" id="gmReport"></div>
+      </div>
+      <div class="grid g2" style="margin-top:14px">
+        <div class="card"><div class="ctitle">Applications à fermer<span class="sp"></span><span id="gmSel" style="text-transform:none;letter-spacing:0;font-weight:500"></span></div><div class="list" id="gmApps"></div></div>
+        <div>
+          <div class="card">
+            <div class="ctitle">Optimisations</div>
+            <div class="list">
+              <label class="item"><span class="sw"><input type="checkbox" id="oPower" checked><span></span></span><div class="grow"><span class="nm">Alimentation hautes performances</span><div class="meta">Le processeur reste à sa fréquence maximale.</div></div></label>
+              <label class="item"><span class="sw"><input type="checkbox" id="oBoost" checked><span></span></span><div class="grow"><span class="nm">Priorité haute pour le jeu</span><div class="meta">Jeux installés via Steam, Epic, Riot, Xbox, EA, Ubisoft…</div></div></label>
+              <label class="item"><span class="sw"><input type="checkbox" id="oLower" checked><span></span></span><div class="grow"><span class="nm">Arrière-plan en priorité basse</span><div class="meta">Les applis gardées ouvertes passent derrière le jeu.</div></div></label>
+              <label class="item"><span class="sw"><input type="checkbox" id="oTrim" checked><span></span></span><div class="grow"><span class="nm">Libérer la RAM</span><div class="meta">Vide la mémoire inutilisée des autres programmes.</div></div></label>
+            </div>
+          </div>
+          <div class="card" style="margin-top:14px">
+            <div class="ctitle">Services mis en pause</div>
+            <div class="list" id="gmSvcs"><div class="empty"><span class="spin"></span>Chargement…</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CE QUI RALENTIT -->
+    <section class="page hidden" id="v-issues">
+      <div class="head"><div><h1>Ce qui ralentit</h1><p>Programmes, démarrage et services qui peuvent coûter des FPS.</p></div><div class="sp"></div><button id="issRefresh"><svg class="i"><use href="#i-refresh"/></svg>Analyser</button></div>
+      <div id="issues"><div class="empty"><span class="spin"></span>Analyse…</div></div>
+    </section>
+
+    <!-- PROCESSUS -->
+    <section class="page hidden" id="v-procs">
+      <div class="head"><div><h1>Processus</h1><p>Regroupés par programme. Clique sur un en-tête pour trier.</p></div></div>
+      <div class="row" style="margin-bottom:12px">
+        <div class="search"><svg class="i"><use href="#i-search"/></svg><input type="text" id="pSearch" placeholder="Rechercher un programme…"></div>
+        <select id="pCat">
+          <option value="!systeme">Hors Windows</option><option value="">Tous</option>
+          <option value="jeu">Jeux</option><option value="inutile">Inutiles</option><option value="appli">Applications</option>
+          <option value="materiel">Matériel / RGB</option><option value="launcher">Launchers</option>
+          <option value="autre">Autres</option><option value="systeme">Windows</option>
+        </select>
+        <div class="sp"></div><span class="path" id="pCount"></span>
+      </div>
+      <div class="card flush">
+        <table>
+          <thead><tr>
+            <th data-s="name">Programme</th><th data-s="category">Catégorie</th>
+            <th data-s="cpu" class="num">CPU</th><th data-s="mem_mb" class="num s">Mémoire</th><th data-s="count" class="num">Instances</th><th></th>
+          </tr></thead>
+          <tbody id="pBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- DEMARRAGE -->
+    <section class="page hidden" id="v-startup">
+      <div class="head"><div><h1>Démarrage</h1><p>Programmes lancés avec Windows. Même réglage que le Gestionnaire des tâches, réversible à tout moment.</p></div></div>
+      <div class="card"><div class="list" id="suList"></div></div>
+    </section>
+
+    <!-- SERVICES -->
+    <section class="page hidden" id="v-services">
+      <div class="head"><div><h1>Services</h1><p>Un service arrêté ici redémarre avec Windows. Les services essentiels ne sont pas affichés.</p></div><div class="sp"></div><button id="svRefresh"><svg class="i"><use href="#i-refresh"/></svg>Actualiser</button></div>
+      <div class="sec">Services Windows non essentiels pour le jeu</div>
+      <div class="card"><div class="list" id="svGame"></div></div>
+      <div class="sec">Services installés par des logiciels</div>
+      <div class="card"><div class="list" id="svThird"></div></div>
+    </section>
+
+    <!-- SECURITE -->
+    <section class="page hidden" id="v-security">
+      <div class="head"><div><h1>Sécurité</h1><p>Faux processus système, noms imités, programmes lancés depuis des dossiers temporaires.</p></div><div class="sp"></div><button id="secRefresh"><svg class="i"><use href="#i-refresh"/></svg>Analyser</button></div>
+      <div id="secOut"><div class="empty"><span class="spin"></span>Analyse…</div></div>
+      <div class="notice"><svg class="i"><use href="#i-warn"/></svg><div>Cette vérification repère des signes courants mais ne remplace pas un antivirus. En cas de doute, lance une analyse complète avec Microsoft Defender.</div></div>
+    </section>
+
+    <!-- PARAMETRES -->
+    <section class="page hidden" id="v-settings">
+      <div class="head"><div><h1>Paramètres</h1><p>Comportement de l'application.</p></div></div>
+      <div class="card">
+        <div class="list">
+          <label class="item"><span class="sw"><input type="checkbox" id="sAuto"><span></span></span><div class="grow"><span class="nm">Lancer Perf Saver au démarrage de Windows</span><div class="meta">Démarre discrètement dans la zone de notification (icône près de l'horloge).</div></div></label>
+          <div class="item"><svg class="i" style="color:var(--mute)"><use href="#i-x"/></svg><div class="grow"><span class="nm">Fermer la fenêtre</span><div class="meta">Perf Saver reste disponible dans la zone de notification. Pour quitter : clic droit sur l'icône › Quitter.</div></div></div>
+        </div>
+      </div>
+      <div class="sec">À propos</div>
+      <div class="card">
+        <div class="kv">
+          <span>Version</span><span id="aVer">–</span>
+          <span>Données locales</span><span><code id="aData">–</code></span>
+          <span>Données envoyées</span><span>Aucune. Perf Saver ne se connecte à aucun serveur et ne collecte rien.</span>
+          <span>Licence</span><span>MIT — logiciel gratuit fourni « en l'état », sans garantie</span>
+        </div>
+        <div class="row" style="margin-top:14px"><button id="showTerms"><svg class="i"><use href="#i-doc"/></svg>Conditions d'utilisation</button></div>
+      </div>
+      <p class="path" style="margin-top:16px">Perf Saver n'est affilié ni à Microsoft ni aux éditeurs des logiciels cités. Les noms de produits appartiennent à leurs propriétaires respectifs.</p>
+    </section>
+
+  </main>
+</div>
+
+<!-- Conditions + démarrage auto (premier lancement) -->
+<div class="modal hidden" id="mTerms">
+  <div class="dlg">
+    <header><svg width="40" height="40" viewBox="0 0 64 64"><rect x="2" y="2" width="60" height="60" rx="15" fill="#161c26"/><path d="M14.5 44A21 21 0 1 1 49.5 44" fill="none" stroke="#2f3848" stroke-width="5.5" stroke-linecap="round"/><path d="M14.5 44A21 21 0 0 1 43.8 19.6" fill="none" stroke="#00e5a0" stroke-width="5.5" stroke-linecap="round"/><path d="M32 37 43 24" stroke="#fff" stroke-width="4.5" stroke-linecap="round"/><circle cx="32" cy="37" r="4.6" fill="#fff"/></svg>
+      <div><h2>Bienvenue dans Perf Saver</h2><p>Merci de lire et d'accepter les conditions d'utilisation.</p></div></header>
+    <div class="body">
+      <div class="legalbox" id="termsText">
+        <h4>1. Objet</h4>
+        <p>Perf Saver est un logiciel gratuit qui affiche les programmes et services de Windows et permet, à la demande de l'utilisateur, de fermer des programmes, de mettre en pause des services, de modifier des priorités, le mode d'alimentation et les programmes lancés au démarrage.</p>
+        <h4>2. Absence de garantie</h4>
+        <p>Le logiciel est fourni « en l'état », sans garantie d'aucune sorte, expresse ou implicite, notamment de bon fonctionnement, d'adéquation à un usage particulier, de gain de performances ou d'absence d'erreur. Les classements et alertes affichés (« inutile », « suspect »…) sont indicatifs et peuvent être erronés.</p>
+        <h4>3. Responsabilité de l'utilisateur</h4>
+        <p>Chaque action (fermeture d'un programme, arrêt d'un service, désactivation au démarrage, changement de priorité ou d'alimentation) est déclenchée par l'utilisateur, qui en est seul responsable. Fermer un programme peut entraîner la perte de travail non enregistré. L'utilisateur s'engage à vérifier ce qu'il ferme et à respecter les conditions d'utilisation des jeux et logiciels qu'il utilise.</p>
+        <h4>4. Limitation de responsabilité</h4>
+        <p>Dans toute la mesure permise par la loi applicable, l'auteur de Perf Saver ne pourra être tenu responsable d'aucun dommage direct ou indirect résultant de l'utilisation ou de l'impossibilité d'utiliser le logiciel, notamment perte de données, dysfonctionnement du système, perte de partie, sanction d'un éditeur de jeu ou dommage matériel. Rien dans ces conditions n'exclut une responsabilité qui ne peut pas l'être légalement.</p>
+        <h4>5. Données personnelles</h4>
+        <p>Perf Saver fonctionne entièrement en local. Il ne collecte, ne transmet et ne vend aucune donnée. Ses réglages sont enregistrés uniquement sur ton PC, dans le dossier <code>%LOCALAPPDATA%\PerfSaver</code>, que tu peux supprimer à tout moment.</p>
+        <h4>6. Marques</h4>
+        <p>Perf Saver n'est affilié à aucun éditeur cité (Microsoft, Valve, Corsair…). Les noms cités le sont uniquement pour identifier les programmes.</p>
+        <h4>7. Licence</h4>
+        <p>Le logiciel est distribué sous licence MIT. En l'utilisant, tu acceptes ces conditions. Si tu ne les acceptes pas, n'utilise pas le logiciel et désinstalle-le.</p>
+      </div>
+      <label class="item" style="margin-top:12px" id="termsChkRow"><input type="checkbox" id="termsChk"><div class="grow">J'ai lu et j'accepte les conditions d'utilisation.</div></label>
+    </div>
+    <footer><div class="sp"></div><button class="ghost" id="termsQuit">Refuser et quitter</button><button class="pri" id="termsOk" disabled>Accepter</button></footer>
+  </div>
+</div>
+
+<div class="modal hidden" id="mAuto">
+  <div class="dlg" style="width:min(460px,92vw)">
+    <header><div class="hero" style="padding:0;background:none;border:0"><div class="ic"><svg class="i"><use href="#i-power"/></svg></div></div>
+      <div><h2>Lancer avec Windows ?</h2><p>Perf Saver démarrera discrètement dans la zone de notification, prêt à activer le mode jeu en un clic.</p></div></header>
+    <div class="body"><p class="path">Tu pourras changer ce choix à tout moment dans Paramètres.</p></div>
+    <footer><div class="sp"></div><button id="autoNo">Non merci</button><button class="pri" id="autoYes">Oui, lancer au démarrage</button></footer>
+  </div>
+</div>
+
+<div class="toast" id="toast"><svg class="i"><use href="#i-check"/></svg><span></span></div>
+
+<script>
+const T = window.__TAURI__;
+const invoke = T.core.invoke;
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const ic = n => `<svg class="i"><use href="#i-${n}"/></svg>`;
+const CAT = {systeme:"Windows",jeu:"Jeu",inutile:"Inutile",materiel:"Matériel / RGB",appli:"Application",launcher:"Launcher",autre:"Autre"};
+const tag = c => `<span class="tag t-${c}">${CAT[c]||c}</span>`;
+const mb = v => v >= 1024 ? (v/1024).toFixed(1)+" Go" : Math.round(v)+" Mo";
+const title = g => g.category==="jeu"||g.category==="systeme"||!g.label ? g.name : g.label;
+
+let snap = null, services = null, startup = null, config = null, view = "home";
+let sortKey = "mem_mb", sortDir = -1, busy = false;
+
+function toast(msg, err){
+  const t=$("toast"); t.querySelector("span").textContent=msg; t.querySelector("use").setAttribute("href", err?"#i-warn":"#i-check");
+  t.className="toast show"+(err?" err":""); clearTimeout(t._h); t._h=setTimeout(()=>t.className="toast"+(err?" err":""),4200);
+}
+async function call(cmd, args){ try { return await invoke(cmd, args); } catch(e){ toast(String(e), true); throw e; } }
+const spinBtn = (b, txt) => { b.disabled = true; b._html = b.innerHTML; b.innerHTML = `<span class="spin"></span><span>${txt}</span>`; };
+const unspin = b => { b.disabled = false; if (b._html) b.innerHTML = b._html; };
+
+// ---------- navigation
+document.querySelectorAll("nav a[data-v]").forEach(a => a.onclick = () => show(a.dataset.v));
+document.addEventListener("click", e => { const g = e.target.closest("[data-go]"); if (g) show(g.dataset.go); });
+function show(v){
+  view = v;
+  document.querySelectorAll("nav a[data-v]").forEach(a => a.classList.toggle("on", a.dataset.v===v));
+  document.querySelectorAll("main section").forEach(s => s.classList.toggle("hidden", s.id!=="v-"+v));
+  $("v-"+v).parentElement.scrollTop = 0;
+  ({game:renderGame, issues:renderIssues, startup:renderStartup, services:renderServices, security:renderSecurity, procs:renderProcs, settings:renderSettings}[v] || (()=>{}))();
+}
+
+// ---------- données
+async function loadSnap(){ snap = await invoke("get_snapshot"); renderHome(); if (view==="procs") renderProcs(); updateBadges(); }
+async function loadServices(force){ if(!services||force) services = await invoke("get_services"); return services; }
+async function loadStartup(force){ if(!startup||force) startup = await invoke("get_startup"); return startup; }
+setInterval(() => { if (document.visibilityState==="visible" && (view==="home"||view==="procs")) loadSnap().catch(()=>{}); }, 2000);
+
+// ---------- état du mode jeu
+function setGmState(on){
+  for (const d of ["gmDot","gmDot2"]) $(d).classList.toggle("on", on);
+  $("gmPillTxt").textContent = $("gmState2").textContent = $("heroT").textContent = on ? "Mode jeu actif" : "Mode jeu inactif";
+  $("gmPillSub").textContent = on ? "Ton PC est optimisé." : "Prêt à optimiser.";
+  $("gmPillBtn").querySelector("span").textContent = on ? "Désactiver" : "Activer";
+  $("gmPillBtn").className = on ? "" : "pri";
+  $("heroBtn").querySelector("span").textContent = on ? "Désactiver le mode jeu" : "Activer le mode jeu";
+  $("heroBtn").className = on ? "big" : "pri big";
+  $("gmOff").classList.toggle("hidden", !on);
+  $("gmOn").querySelector("span").textContent = on ? "Réappliquer" : "Activer le mode jeu";
+  invoke("set_tray_state", { active: on }).catch(()=>{});
+}
+async function toggleGame(){ if (snap && snap.game_mode) return gameOff(); show("game"); }
+$("gmPillBtn").onclick = toggleGame; $("heroBtn").onclick = toggleGame;
+
+// ---------- vue d'ensemble
+function renderHome(){
+  if(!snap) return;
+  const ramPct = snap.ram_used_mb/snap.ram_total_mb*100;
+  $("cpu").textContent = snap.cpu.toFixed(0)+" %";
+  $("cpuTxt").textContent = snap.cores+" cœurs logiques";
+  $("cpuBar").style.width = Math.min(100,snap.cpu)+"%"; $("cpuBar").className = snap.cpu>85?"b":snap.cpu>60?"w":"";
+  $("ram").textContent = ramPct.toFixed(0)+" %";
+  $("ramTxt").textContent = mb(snap.ram_used_mb)+" sur "+mb(snap.ram_total_mb);
+  $("ramBar").style.width = ramPct+"%"; $("ramBar").className = ramPct>85?"b":ramPct>70?"w":"";
+  const total = snap.groups.reduce((a,g)=>a+g.count,0);
+  const nonSys = snap.groups.filter(g=>g.category!=="systeme");
+  $("nproc").textContent = total;
+  $("nprocTxt").textContent = nonSys.length+" programmes hors Windows";
+  const sus = snap.groups.filter(g=>g.alert);
+  $("secV").textContent = sus.length ? sus.length+" alerte"+(sus.length>1?"s":"") : "OK";
+  $("secV").style.color = sus.length ? "var(--bad)" : "var(--acc)";
+  $("secTxt").textContent = sus.length ? "Voir l'onglet Sécurité" : "Aucun processus suspect";
+  const games = snap.groups.filter(g=>g.category==="jeu");
+  $("heroS").textContent = games.length ? "Jeu détecté : "+games.map(g=>g.name).join(", ") : "Aucun jeu détecté pour l'instant.";
+  setGmState(snap.game_mode);
+  const top = nonSys.slice().sort((a,b)=>(b.mem_mb/80+b.cpu)-(a.mem_mb/80+a.cpu)).slice(0,6);
+  $("topList").innerHTML = top.map(g=>`<div class="item"><div class="grow"><span class="nm">${esc(title(g))}</span> ${tag(g.category)}<div class="meta">${esc(g.name)}${g.count>1?" · "+g.count+" instances":""}</div></div><div class="num" style="width:60px">${g.cpu.toFixed(1)} %</div><div class="num" style="width:70px">${mb(g.mem_mb)}</div></div>`).join("") || `<div class="empty">Rien à signaler.</div>`;
+  const cnt = c => snap.groups.filter(g=>g.category===c);
+  const line = (label, list) => `<div class="item"><div class="grow">${label}</div><b>${list.length}</b><span class="path" style="width:64px;text-align:right">${mb(list.reduce((a,g)=>a+g.mem_mb,0))}</span></div>`;
+  $("summary").innerHTML = line("Applications inutiles ouvertes", cnt("inutile")) + line("Logiciels matériel / RGB", cnt("materiel")) + line("Applications", cnt("appli")) + line("Launchers de jeux", cnt("launcher"));
+}
+$("btnRam").onclick = async () => {
+  const b = $("btnRam"); spinBtn(b, "Nettoyage…");
+  try { const f = await call("free_ram"); toast("Mémoire libérée : "+mb(f)); loadSnap(); } finally { unspin(b); }
+};
+
+// ---------- mode jeu
+const KILLABLE = ["inutile","materiel","appli","launcher","autre"];
+async function renderGame(){
+  if(!config) config = await invoke("get_config");
+  if(!snap) await loadSnap();
+  const saved = new Set((config.kill||[]).map(s=>s.toLowerCase()));
+  const hasSaved = (config.kill||[]).length>0;
+  const prev = new Set([...document.querySelectorAll("#gmApps input:checked")].map(i=>i.value.toLowerCase()));
+  const first = !$("gmApps").dataset.done;
+  const order = {inutile:0,materiel:1,appli:2,launcher:3,autre:4};
+  const groups = snap.groups.filter(g=>KILLABLE.includes(g.category)).sort((a,b)=>order[a.category]-order[b.category]||b.mem_mb-a.mem_mb);
+  const heads = {inutile:"Inutiles pendant le jeu",materiel:"Matériel / RGB — l'éclairage restera figé",appli:"Applications",launcher:"Launchers — garde celui de ton jeu",autre:"Autres programmes"};
+  let html = "", last = "";
+  for (const g of groups){
+    if (g.category!==last){ html += `<div class="subsec">${heads[g.category]}</div>`; last=g.category; }
+    const k = g.name.toLowerCase();
+    const checked = first ? (hasSaved ? saved.has(k) : g.category==="inutile") : prev.has(k);
+    html += `<label class="item"><input type="checkbox" value="${esc(g.name)}" ${checked?"checked":""}><div class="grow"><span class="nm">${esc(title(g))}</span><div class="meta">${esc(g.name)}${g.count>1?" · "+g.count+" instances":""}</div></div><span class="num path">${mb(g.mem_mb)}</span></label>`;
+  }
+  $("gmApps").innerHTML = html || `<div class="empty ok">${ic("check")}Aucune application à fermer.</div>`;
+  $("gmApps").dataset.done = "1"; countSel();
+  if (config.options){ $("oPower").checked=config.options.power; $("oBoost").checked=config.options.boost_games; $("oLower").checked=config.options.lower_background; $("oTrim").checked=config.options.trim; }
+  const sv = await loadServices();
+  const savedSv = new Set((config.services||[]).map(s=>s.toLowerCase()));
+  const list = sv.filter(s=>s.gaming_note && s.running);
+  $("gmSvcs").innerHTML = list.map(s=>{
+    const ch = (config.services||[]).length ? savedSv.has(s.name.toLowerCase()) : s.name.toLowerCase()!=="spooler";
+    return `<label class="item"><input type="checkbox" value="${esc(s.name)}" ${ch?"checked":""}><div class="grow"><span class="nm">${esc(s.display)}</span><div class="meta">${esc(s.gaming_note)}</div></div></label>`;
+  }).join("") || `<div class="empty ok">${ic("check")}Aucun service superflu en cours.</div>`;
+}
+function countSel(){ const n = document.querySelectorAll("#gmApps input:checked").length; $("gmSel").textContent = n ? n+" sélectionnée"+(n>1?"s":"") : ""; }
+$("gmApps").onchange = countSel;
+const rline = (ok, txt) => `<div class="${ok?"k":"e"}">${ic(ok?"check":"x")}<span>${esc(txt)}</span></div>`;
+async function gameOn(){
+  if (busy) return; busy = true;
+  const btn = $("gmOn"); spinBtn(btn, "Optimisation…");
+  const req = {
+    kill: [...document.querySelectorAll("#gmApps input:checked")].map(i=>i.value),
+    services: [...document.querySelectorAll("#gmSvcs input:checked")].map(i=>i.value),
+    options: { power:$("oPower").checked, trim:$("oTrim").checked, boost_games:$("oBoost").checked, lower_background:$("oLower").checked }
+  };
+  try {
+    const r = await call("game_mode_on", { req });
+    config = { ...config, kill: req.kill, services: req.services, options: req.options };
+    let h = rline(true, r.killed.length ? "Fermé : "+r.killed.join(", ") : "Aucune application à fermer");
+    if (r.services.length) h += rline(true, "Services en pause : "+r.services.join(", "));
+    if (r.power) h += rline(true, "Alimentation : "+r.power);
+    if (r.boosted.length) h += rline(true, "Priorité haute : "+r.boosted.join(", "));
+    if (r.lowered) h += rline(true, r.lowered+" programme(s) en priorité basse");
+    if (r.ram_freed_mb) h += rline(true, "Mémoire libérée : "+mb(r.ram_freed_mb));
+    r.errors.forEach(e => h += rline(false, e));
+    $("gmReport").innerHTML = h;
+    toast("Mode jeu activé. Bonne partie !");
+    services = null; await loadSnap(); if (view==="game") renderGame();
+  } finally { unspin(btn); busy = false; setGmState(!!snap?.game_mode); }
+}
+async function gameOff(){
+  if (busy) return; busy = true;
+  try {
+    const r = await call("game_mode_off");
+    let h = rline(true, "Mode jeu désactivé");
+    if (r.services.length) h += rline(true, "Services relancés : "+r.services.join(", "));
+    if (r.power) h += rline(true, r.power+" restauré");
+    r.errors.forEach(e => h += rline(false, e));
+    $("gmReport").innerHTML = h;
+    toast("Mode jeu désactivé, réglages restaurés.");
+    services = null; await loadSnap();
+  } finally { busy = false; }
+}
+$("gmOn").onclick = gameOn; $("gmOff").onclick = gameOff;
+
+// ---------- processus
+document.querySelectorAll("th[data-s]").forEach(th => th.onclick = () => {
+  const k = th.dataset.s; if (sortKey===k) sortDir*=-1; else { sortKey=k; sortDir=(k==="name"||k==="category")?1:-1; }
+  document.querySelectorAll("th[data-s]").forEach(x => { x.classList.toggle("s", x.dataset.s===sortKey); x.classList.toggle("asc", x.dataset.s===sortKey && sortDir===1); });
+  renderProcs();
+});
+$("pSearch").oninput = renderProcs; $("pCat").onchange = renderProcs;
+function renderProcs(){
+  if(!snap) return;
+  const q = $("pSearch").value.toLowerCase(), c = $("pCat").value;
+  let list = snap.groups.filter(g => (!q || (g.name+" "+g.label+" "+g.exe).toLowerCase().includes(q)) && (!c || (c==="!systeme" ? g.category!=="systeme" : g.category===c)));
+  list.sort((a,b)=>{ const x=a[sortKey], y=b[sortKey]; return (typeof x==="string" ? x.localeCompare(y) : x-y)*sortDir; });
+  $("pCount").textContent = list.length+" programme"+(list.length>1?"s":"");
+  $("pBody").innerHTML = list.map(g=>{
+    const prot = g.category==="systeme";
+    return `<tr><td><div class="nm">${esc(title(g))}</div><div class="path">${esc(g.exe||g.name)}</div>${g.alert?`<div class="alert">${ic("warn")}${esc(g.alert)}</div>`:""}</td>
+      <td>${tag(g.category)}</td><td class="num">${g.cpu.toFixed(1)} %</td><td class="num">${mb(g.mem_mb)}</td><td class="num">${g.count}</td>
+      <td><div class="acts">${g.exe?`<button class="icon ghost" data-loc="${esc(g.exe)}" title="Ouvrir l'emplacement">${ic("folder")}</button>`:""}${prot?"":`<button class="icon ghost" data-hi="${esc(g.name)}" title="Priorité haute">${ic("up")}</button><button class="sm danger" data-kill="${esc(g.name)}">Fermer</button>`}</div></td></tr>`;
+  }).join("") || `<tr><td colspan="6"><div class="empty">Aucun résultat.</div></td></tr>`;
+}
+$("pBody").onclick = async e => {
+  const b = e.target.closest("button"); if(!b) return;
+  if (b.dataset.kill){ const n = await call("kill_group",{name:b.dataset.kill}); toast(n ? b.dataset.kill+" fermé" : "Impossible de fermer "+b.dataset.kill, !n); loadSnap(); }
+  if (b.dataset.hi){ const n = await call("set_priority",{name:b.dataset.hi, level:"high"}); toast(n ? b.dataset.hi+" passé en priorité haute" : "Impossible de changer la priorité", !n); }
+  if (b.dataset.loc) call("open_location",{path:b.dataset.loc});
+};
+
+// ---------- démarrage
+async function renderStartup(){
+  $("suList").innerHTML = `<div class="empty"><span class="spin"></span>Chargement…</div>`;
+  const list = await loadStartup(true);
+  $("suList").innerHTML = list.length ? list.map(s=>`<div class="item"><label class="sw"><input type="checkbox" data-id="${esc(s.id)}" ${s.enabled?"checked":""}><span></span></label>
+    <div class="grow"><span class="nm">${esc(s.name)}</span> ${s.category!=="autre"?tag(s.category):""}<div class="path">${esc(s.command)}</div>${s.alert?`<div class="alert">${ic("warn")}${esc(s.alert)}</div>`:""}</div><span class="meta">${esc(s.location)}</span></div>`).join("")
+    : `<div class="empty">Aucun programme au démarrage.</div>`;
+}
+$("suList").onchange = async e => {
+  const i = e.target; if(!i.dataset.id) return;
+  try { await call("set_startup",{id:i.dataset.id, enabled:i.checked}); toast(i.checked?"Réactivé au démarrage":"Ne se lancera plus au démarrage"); startup=null; }
+  catch { i.checked = !i.checked; }
+};
+
+// ---------- services
+async function renderServices(force){
+  $("svGame").innerHTML = $("svThird").innerHTML = `<div class="empty"><span class="spin"></span>Chargement…</div>`;
+  const sv = await loadServices(force);
+  const row = s => `<div class="item"><label class="sw"><input type="checkbox" data-sv="${esc(s.name)}" ${s.running?"checked":""}><span></span></label>
+    <div class="grow"><span class="nm">${esc(s.display)}</span> <span class="path">${esc(s.name)}</span>${s.gaming_note?`<div class="meta">${esc(s.gaming_note)}</div>`:""}<div class="path">${esc(s.path)}</div>${s.alert?`<div class="alert">${ic("warn")}${esc(s.alert)}</div>`:""}</div>
+    <span class="tag ${s.running?"t-jeu":""}">${s.running?"En cours":"Arrêté"}</span></div>`;
+  const g = sv.filter(s=>s.gaming_note && !s.third_party);
+  const t = sv.filter(s=>s.third_party).sort((a,b)=>b.running-a.running);
+  $("svGame").innerHTML = g.map(row).join("") || `<div class="empty">Aucun.</div>`;
+  $("svThird").innerHTML = t.map(row).join("") || `<div class="empty">Aucun.</div>`;
+}
+$("svRefresh").onclick = () => renderServices(true);
+$("v-services").onchange = async e => {
+  const i = e.target; if(!i.dataset.sv) return; i.disabled = true;
+  try { await call("set_service",{name:i.dataset.sv, runIt:i.checked}); toast((i.checked?"Service démarré : ":"Service arrêté : ")+i.dataset.sv); }
+  catch { i.checked = !i.checked; } finally { i.disabled=false; services=null; }
+};
+
+// ---------- ce qui ralentit
+async function renderIssues(force){
+  if(!snap || force) await loadSnap();
+  const [sv, su] = await Promise.all([loadServices(force), loadStartup(force)]);
+  const heavy = snap.groups.filter(g=>g.category!=="systeme" && g.category!=="jeu" && (g.cpu>2 || g.mem_mb>250 || g.category==="inutile")).sort((a,b)=>(b.mem_mb/80+b.cpu)-(a.mem_mb/80+a.cpu));
+  const KNOWN = ["inutile","materiel","appli","launcher"];
+  const suOn = su.filter(s=>s.enabled && s.category!=="systeme").sort((a,b)=>KNOWN.includes(b.category)-KNOWN.includes(a.category));
+  const svRun = sv.filter(s=>s.gaming_note && s.running);
+  const block = (t, n, items, emptyTxt) => `<div class="sec">${t} <span class="n">${n}</span></div><div class="card"><div class="list">${items || `<div class="empty ok">${ic("check")}${emptyTxt}</div>`}</div></div>`;
+  $("issues").innerHTML =
+    block("Programmes ouverts qui consomment", heavy.length, heavy.map(g=>`<div class="item"><div class="grow"><span class="nm">${esc(title(g))}</span> ${tag(g.category)}<div class="meta">${esc(g.name)} · ${g.cpu.toFixed(1)} % CPU · ${mb(g.mem_mb)}</div></div><div class="acts"><button class="sm danger" data-kill="${esc(g.name)}">Fermer</button></div></div>`).join(""), "Rien de gourmand en ce moment.") +
+    block("Lancés au démarrage de Windows", suOn.length, suOn.map(s=>`<div class="item"><div class="grow"><span class="nm">${esc(s.category!=="autre"&&s.label?s.label:s.name)}</span> ${s.category!=="autre"?tag(s.category):""}<div class="path">${esc(s.command)}</div></div><div class="acts"><button class="sm" data-su="${esc(s.id)}">Désactiver</button></div></div>`).join(""), "Démarrage propre.") +
+    block("Services non essentiels en cours", svRun.length, svRun.map(s=>`<div class="item"><div class="grow"><span class="nm">${esc(s.display)}</span><div class="meta">${esc(s.gaming_note)}</div></div><div class="acts"><button class="sm" data-svs="${esc(s.name)}">Arrêter</button></div></div>`).join(""), "Aucun.");
+}
+$("issRefresh").onclick = () => { $("issues").innerHTML = `<div class="empty"><span class="spin"></span>Analyse…</div>`; renderIssues(true); };
+$("issues").onclick = async e => {
+  const b = e.target.closest("button"); if(!b) return; b.disabled = true;
+  try {
+    if (b.dataset.kill){ await call("kill_group",{name:b.dataset.kill}); toast(b.dataset.kill+" fermé"); await loadSnap(); }
+    if (b.dataset.su){ await call("set_startup",{id:b.dataset.su, enabled:false}); toast("Désactivé au démarrage"); startup=null; }
+    if (b.dataset.svs){ await call("set_service",{name:b.dataset.svs, runIt:false}); toast("Service arrêté"); services=null; }
+    b.closest(".item").remove();
+  } catch { b.disabled=false; }
+};
+
+// ---------- sécurité
+async function renderSecurity(force){
+  if(!snap || force) await loadSnap();
+  const [sv, su] = await Promise.all([loadServices(force), loadStartup(force)]);
+  const items = [
+    ...snap.groups.filter(g=>g.alert).map(g=>({t:"Processus", n:g.name, p:g.exe, a:g.alert})),
+    ...su.filter(s=>s.alert).map(s=>({t:"Démarrage", n:s.name, p:s.command, a:s.alert})),
+    ...sv.filter(s=>s.alert).map(s=>({t:"Service", n:s.display, p:s.path, a:s.alert})),
+  ];
+  const svch = snap.groups.find(g=>g.name.toLowerCase()==="svchost.exe");
+  let h = items.length
+    ? `<div class="card"><div class="list">${items.map(i=>`<div class="item"><div class="grow"><span class="tag t-inutile">${i.t}</span> <span class="nm">${esc(i.n)}</span><div class="alert">${ic("warn")}${esc(i.a)}</div><div class="path">${esc(i.p)}</div></div>${i.p?`<button class="sm" data-loc="${esc(i.p)}">${ic("folder")}Emplacement</button>`:""}</div>`).join("")}</div></div>`
+    : `<div class="card hero"><div class="ic">${ic("shield")}</div><div><h2>Rien de suspect détecté</h2><p>${snap.groups.length} programmes, ${su.length} entrées de démarrage et ${sv.length} services vérifiés.</p></div></div>`;
+  if (svch && !svch.alert) h += `<div class="card" style="margin-top:14px"><div class="ctitle">À propos de svchost.exe</div><div class="meta" style="color:var(--text)">${svch.count} instances, toutes dans <code>C:\\Windows\\System32</code>. C'est normal : Windows exécute ses services à l'intérieur de svchost.</div></div>`;
+  $("secOut").innerHTML = h;
+  updateBadges(items.length);
+}
+$("secRefresh").onclick = () => { $("secOut").innerHTML = `<div class="empty"><span class="spin"></span>Analyse…</div>`; renderSecurity(true); };
+$("secOut").onclick = e => { const b=e.target.closest("button"); if(b?.dataset.loc) call("open_location",{path:b.dataset.loc.replace(/^"/,"").replace(/".*$/,"")}); };
+
+function updateBadges(secCount){
+  if (!snap) return;
+  const s = secCount ?? snap.groups.filter(g=>g.alert).length;
+  $("bSec").textContent = s; $("bSec").classList.toggle("hidden", !s);
+  const iss = snap.groups.filter(g=>g.category==="inutile").length;
+  $("bIssues").textContent = iss; $("bIssues").classList.toggle("hidden", !iss);
+}
+
+// ---------- paramètres
+async function renderSettings(){
+  $("sAuto").checked = await invoke("get_autostart");
+  const info = await invoke("app_info");
+  $("aVer").textContent = info.version; $("aData").textContent = info.data_dir;
+}
+$("sAuto").onchange = async e => {
+  const i = e.target; i.disabled = true;
+  try { await call("set_autostart", { enabled: i.checked }); toast(i.checked ? "Perf Saver se lancera avec Windows" : "Lancement automatique désactivé"); }
+  catch { i.checked = !i.checked; } finally { i.disabled = false; }
+};
+$("showTerms").onclick = () => { $("termsChkRow").classList.add("hidden"); $("termsOk").disabled=false; $("termsOk").textContent="Fermer"; $("termsQuit").classList.add("hidden"); $("termsOk").onclick=()=>$("mTerms").classList.add("hidden"); $("mTerms").classList.remove("hidden"); };
+
+// ---------- premier lancement
+$("termsChk").onchange = e => $("termsOk").disabled = !e.target.checked;
+$("termsQuit").onclick = () => invoke("quit_app");
+async function onboarding(){
+  config = await invoke("get_config");
+  const info = await invoke("app_info");
+  $("ver").textContent = "Version "+info.version;
+  if (config.terms_accepted !== info.terms){
+    $("mTerms").classList.remove("hidden");
+    await new Promise(res => $("termsOk").onclick = async () => { await invoke("accept_terms"); $("mTerms").classList.add("hidden"); res(); });
+  }
+  if (!config.autostart_asked){
+    $("mAuto").classList.remove("hidden");
+    const choice = await new Promise(res => { $("autoYes").onclick = () => res(true); $("autoNo").onclick = () => res(false); });
+    $("mAuto").classList.add("hidden");
+    try { await call("set_autostart", { enabled: choice }); if (choice) toast("Perf Saver se lancera avec Windows"); } catch {}
+    config.autostart_asked = true;
+  }
+}
+
+// ---------- zone de notification
+T.event.listen("tray-game", async () => {
+  if (snap && snap.game_mode) return gameOff();
+  await renderGame(); return gameOn();
+});
+T.event.listen("tray-ram", () => $("btnRam").click());
+
+loadSnap();
+onboarding();
+</script>
+</body>
+</html>

@@ -1,0 +1,46 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows-build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Outils de compilation (mingw-w64, NSIS, Rust)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mingw-w64 nsis zip
+          rustup toolchain install stable --profile minimal
+          rustup target add x86_64-pc-windows-gnu
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Compilation + installeur
+        run: ./build.sh
+
+      - name: Publication de la release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Perf Saver ${{ github.ref_name }}
+          body_path: docs/RELEASE_NOTES.md
+          files: |
+            dist/PerfSaver-Setup-*.exe
+            dist/PerfSaver-portable-*.zip
+            dist/SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        with:
+          name: perfsaver-windows
+          path: dist/

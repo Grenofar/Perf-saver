@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Perf Saver — Optimiseur Windows gratuit pour le jeu</title>
+<meta name="description" content="Perf Saver libère ton PC pendant que tu joues : ferme les applis inutiles, met en pause les services superflus et donne la priorité à ton jeu. Gratuit, léger, sans collecte de données.">
+<meta property="og:title" content="Perf Saver — Optimiseur Windows gratuit pour le jeu">
+<meta property="og:description" content="Un clic pour libérer ton PC pendant que tu joues. Gratuit, 3 Mo, aucune donnée envoyée.">
+<meta property="og:image" content="/img/home.webp">
+<meta name="theme-color" content="#07090d">
+<link rel="icon" href="/favicon.png">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><defs>
+  <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></symbol>
+  <symbol id="i-dl" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 20h16"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-game" viewBox="0 0 24 24"><path d="M6 8h12a4 4 0 0 1 4 4v1.5a3.5 3.5 0 0 1-6.3 2.1L14.5 14h-5l-1.2 1.6A3.5 3.5 0 0 1 2 13.5V12a4 4 0 0 1 4-4z"/><path d="M7 11v3M5.5 12.5h3"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 4.5 3.4 8 8 9 4.6-1 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/></symbol>
+  <symbol id="i-power" viewBox="0 0 24 24"><path d="M12 3v8"/><path d="M6.3 7.2a8 8 0 1 0 11.4 0"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
+  <symbol id="i-feather" viewBox="0 0 24 24"><path d="M20.2 12.2a6 6 0 0 0-8.5-8.5L5 10.5V19h8.5z"/><path d="M16 8 2 22M17.5 15H9"/></symbol>
+  <symbol id="i-gh" viewBox="0 0 24 24"><path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12.3 12.3 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21"/></symbol>
+</defs></svg>
+
+<header class="top">
+  <div class="wrap">
+    <a class="logo" href="/"><img src="/img/icon.png" alt="">Perf Saver</a>
+    <nav><a href="#fonctionnalites">Fonctionnalités</a><a href="#confidentialite">Confidentialité</a><a href="#faq">FAQ</a></nav>
+    <a class="btn pri sm" href="#telecharger"><svg class="i"><use href="#i-dl"/></svg>Télécharger</a>
+  </div>
+</header>
+
+<main>
+  <div class="hero">
+    <div class="wrap">
+      <span class="pill"><b>Nouveau</b> Version <span data-v>1.0.0</span> · Windows 10 &amp; 11</span>
+      <h1>Libère ton PC.<br><span>Garde les FPS pour ton jeu.</span></h1>
+      <p class="lead">Perf Saver ferme ce qui tourne pour rien, met en pause les services superflus et donne la priorité à ton jeu. Un clic pour activer, un clic pour tout restaurer.</p>
+      <div class="cta">
+        <a class="btn pri" href="#telecharger"><svg class="i"><use href="#i-dl"/></svg>Télécharger gratuitement</a>
+        <a class="btn" href="#fonctionnalites">Découvrir</a>
+      </div>
+      <p class="meta">Gratuit · 1,4 Mo · Aucune donnée collectée · Licence MIT</p>
+      <div class="shot"><div class="bar"><i></i><i></i><i></i></div><img src="/img/home.webp" width="2360" height="1440" alt="Interface de Perf Saver : vue d'ensemble du processeur, de la mémoire et des programmes en cours"></div>
+    </div>
+  </div>
+
+  <section id="fonctionnalites">
+    <div class="wrap center">
+      <div class="kicker">Fonctionnalités</div>
+      <h2>Tout ce qui ralentit ton PC, au même endroit</h2>
+      <p class="sub">Une application native de 3 Mo, écrite en Rust, qui reste discrète près de l'horloge et ne consomme presque rien.</p>
+      <div class="feats" style="text-align:left">
+        <div class="feat"><div class="ic"><svg class="i"><use href="#i-game"/></svg></div><h3>Mode jeu en un clic</h3><p>Ferme les applis choisies, met en pause SysMain, l'indexation et Windows Update, passe en hautes performances et libère la RAM.</p></div>
+        <div class="feat"><div class="ic"><svg class="i"><use href="#i-bolt"/></svg></div><h3>Priorité au jeu</h3><p>Ton jeu passe en priorité haute, Discord, le navigateur et le RGB passent derrière. Détection automatique des jeux Steam, Epic, Riot, Xbox…</p></div>
+        <div class="feat"><div class="ic"><svg class="i"><use href="#i-list"/></svg></div><h3>Processus triés</h3><p>Chaque programme est classé : jeu, inutile, matériel/RGB, application, launcher ou Windows. Tu vois tout de suite ce qui consomme.</p></div>
+        <div class="feat"><div class="ic"><svg class="i"><use href="#i-power"/></svg></div><h3>Démarrage allégé</h3><p>Désactive les programmes lancés avec Windows, avec le même mécanisme que le Gestionnaire des tâches. Réversible à tout moment.</p></div>
+        <div class="feat"><div class="ic"><svg class="i"><use href="#i-shield"/></svg></div><h3>Contrôle de sécurité</h3><p>Repère les faux processus système (un « svchost » hors de System32), les noms imités et les programmes lancés depuis un dossier temporaire.</p></div>
+        <div class="feat"><div class="ic"><svg class="i"><use href="#i-feather"/></svg></div><h3>Ultra léger</h3><p>Pas d'Electron, pas de service caché. L'interface ne se met à jour que lorsqu'elle est visible.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section style="padding-top:20px">
+    <div class="wrap split">
+      <div>
+        <div class="kicker">Sans risque</div>
+        <h2>Tout est réversible</h2>
+        <p class="sub">Perf Saver ne désinstalle rien et ne modifie aucun fichier système.</p>
+        <ul class="checks">
+          <li><svg class="i"><use href="#i-check"/></svg>Les services sont mis en pause puis relancés, jamais désactivés.</li>
+          <li><svg class="i"><use href="#i-check"/></svg>L'alimentation et les priorités reviennent à leur état d'origine.</li>
+          <li><svg class="i"><use href="#i-check"/></svg>Impossible de fermer les processus vitaux de Windows ou les anti-triches (Vanguard, BattlEye, EasyAntiCheat).</li>
+          <li><svg class="i"><use href="#i-check"/></svg>Tu choisis exactement ce qui est fermé. Rien n'est automatique sans ton accord.</li>
+        </ul>
+      </div>
+      <div class="frame"><img src="/img/game.webp" width="2360" height="1440" alt="Écran du mode jeu de Perf Saver avec la liste des applications à fermer et les optimisations"></div>
+    </div>
+  </section>
+
+  <section id="confidentialite" style="padding-top:20px">
+    <div class="wrap center">
+      <div class="kicker">Confidentialité</div>
+      <h2>Zéro donnée collectée</h2>
+      <p class="sub">Perf Saver fonctionne entièrement sur ton PC. Pas de compte, pas de télémétrie, pas de publicité, aucune connexion à un serveur. Ce site n'utilise ni cookie ni outil de mesure d'audience.</p>
+    </div>
+  </section>
+
+  <section id="telecharger" style="padding-top:10px">
+    <div class="wrap">
+      <div class="dl">
+        <div>
+          <div class="kicker">Télécharger</div>
+          <h2>Perf Saver <span data-v>1.0.0</span></h2>
+          <p class="sub" style="margin-bottom:26px">Installeur pour Windows 10 et 11 (64 bits). Raccourcis Bureau et menu Démarrer, désinstallation propre depuis les Paramètres Windows.</p>
+          <a class="btn pri" href="/download/PerfSaver-Setup.exe" download><svg class="i"><use href="#i-dl"/></svg>Télécharger l'installeur (.exe)</a>
+          <p class="agree">En téléchargeant ou en utilisant Perf Saver, tu acceptes les <a href="/conditions">conditions d'utilisation</a>. Logiciel fourni « en l'état », sans garantie.</p>
+        </div>
+        <div class="specs">
+          <span>Version</span><span data-v>1.0.0</span>
+          <span>Taille</span><span>1,4 Mo</span>
+          <span>Système</span><span>Windows 10 / 11, 64 bits</span>
+          <span>Requis</span><span>Microsoft Edge WebView2 (inclus dans Windows 11)</span>
+          <span>Droits</span><span>Administrateur (gestion des services)</span>
+          <span>Licence</span><span>MIT, gratuite</span>
+          <span>SHA-256</span><code data-sha>f9b4439fb216055322841d16710750a754583b3c118806c4167faf3998f75a63</code>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="faq" style="padding-top:20px">
+    <div class="wrap center">
+      <div class="kicker">FAQ</div>
+      <h2>Questions fréquentes</h2>
+    </div>
+    <div class="wrap">
+      <div class="faq">
+        <details><summary>Windows affiche « Windows a protégé votre PC ». Est-ce normal ?</summary><p>Oui. SmartScreen avertit pour tout logiciel récent qui n'est pas encore signé numériquement. Clique sur « Informations complémentaires » puis « Exécuter quand même ». Tu peux vérifier l'intégrité du fichier avec l'empreinte SHA-256 indiquée ci-dessus.</p></details>
+        <details><summary>Pourquoi l'application demande-t-elle les droits administrateur ?</summary><p>Arrêter un service Windows, changer la priorité d'un jeu ou le mode d'alimentation nécessite ces droits. Perf Saver n'effectue aucune action sans que tu la déclenches.</p></details>
+        <details><summary>Est-ce que je risque un bannissement dans mes jeux ?</summary><p>Perf Saver ne touche ni à la mémoire ni aux fichiers des jeux : il agit uniquement sur Windows (priorités, services, alimentation), comme le Gestionnaire des tâches. Il ne ferme jamais les anti-triches. Il reste de ta responsabilité de respecter les conditions d'utilisation de chaque jeu.</p></details>
+        <details><summary>Combien de FPS vais-je gagner ?</summary><p>Ça dépend de ton PC et de ce qui tourne en arrière-plan. Le gain est surtout visible sur les PC qui ont beaucoup de programmes ouverts ou peu de mémoire. Aucun gain n'est garanti.</p></details>
+        <details><summary>Comment le désinstaller ?</summary><p>Paramètres Windows › Applications › Perf Saver › Désinstaller. La tâche de démarrage automatique est supprimée en même temps. Tu peux aussi effacer le dossier <code>%LOCALAPPDATA%\PerfSaver</code> qui contient tes réglages.</p></details>
+        <details><summary>Est-ce vraiment gratuit ?</summary><p>Oui, et sans publicité. Le code est publié sous licence MIT.</p></details>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div>
+      <a class="logo" href="/"><img src="/img/icon.png" alt="">Perf Saver</a>
+      <p>Perf Saver n'est affilié ni à Microsoft ni aux éditeurs des logiciels cités. Les noms de produits appartiennent à leurs propriétaires respectifs.</p>
+      <p>© 2026 Grenofar · Logiciel fourni « en l'état », sans garantie.</p>
+    </div>
+    <nav>
+      <a href="/conditions">Conditions d'utilisation</a>
+      <a href="/confidentialite">Confidentialité</a>
+      <a href="/mentions-legales">Mentions légales</a>
+    </nav>
+  </div>
+</footer>
+</body>
+</html>

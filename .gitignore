@@ -1,0 +1,5 @@
+target/
+src-tauri/gen/
+dist/
+*.log
+.vercel
