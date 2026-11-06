@@ -1,0 +1,9 @@
+# Seul le dossier site/ est déployé sur Vercel
+src-tauri
+ui
+installer
+scripts
+docs
+dist
+build.sh
+.github
