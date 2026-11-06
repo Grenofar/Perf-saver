@@ -1,6 +1,6 @@
 # Conditions d'utilisation de Perf Saver
 
-*Version du 7 novembre 2026*
+*Version du 7 novembre 2026 (2)*
 
 ## 1. Objet
 Perf Saver est un logiciel gratuit pour Windows qui affiche les programmes et services en cours d'exécution et permet, **à la demande de l'utilisateur**, de fermer des programmes, de mettre en pause des services, de modifier des priorités, le mode d'alimentation et les programmes lancés au démarrage.
@@ -15,7 +15,7 @@ Chaque action (fermeture d'un programme, arrêt d'un service, désactivation au 
 Dans toute la mesure permise par la loi applicable, l'auteur de Perf Saver ne pourra être tenu responsable d'aucun dommage direct ou indirect résultant de l'utilisation ou de l'impossibilité d'utiliser le logiciel, notamment perte de données, dysfonctionnement du système, perte de partie, sanction d'un éditeur de jeu ou dommage matériel. Rien dans ces conditions n'exclut une responsabilité qui ne peut pas l'être légalement.
 
 ## 5. Données personnelles
-Perf Saver fonctionne entièrement en local. Il ne collecte, ne transmet et ne vend aucune donnée et ne se connecte à aucun serveur. Ses réglages sont enregistrés uniquement sur le PC de l'utilisateur, dans `%LOCALAPPDATA%\PerfSaver`, et peuvent être supprimés à tout moment.
+Perf Saver fonctionne en local et ne collecte, ne transmet ni ne vend aucune donnée personnelle. Sa seule connexion réseau est la vérification des mises à jour : une requête vers le site de Perf Saver pour lire le numéro de la dernière version, sans aucun identifiant (l'hébergeur voit l'adresse IP comme pour toute visite). Elle est désactivable dans les Paramètres. Les mises à jour ne sont installées qu'après accord de l'utilisateur et vérification de leur empreinte SHA-256. Ses réglages sont enregistrés uniquement sur le PC de l'utilisateur, dans `%LOCALAPPDATA%\PerfSaver`, et peuvent être supprimés à tout moment.
 
 ## 6. Marques
 Perf Saver n'est affilié à aucun éditeur cité (Microsoft, Valve, Corsair, etc.). Les noms de produits sont cités uniquement pour identifier les programmes et appartiennent à leurs propriétaires respectifs.

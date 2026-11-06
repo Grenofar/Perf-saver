@@ -132,6 +132,9 @@ input[type=checkbox]{accent-color:var(--acc);width:15px;height:15px;flex:none;ma
 .spin{display:inline-block;width:13px;height:13px;border:2px solid var(--line2);border-top-color:var(--acc);border-radius:50%;animation:r .8s linear infinite;flex:none}
 @keyframes r{to{transform:rotate(360deg)}}
 .hidden{display:none!important}
+.upd{display:flex;align-items:center;gap:14px;margin:18px 32px 0;padding:12px 16px;border-radius:var(--r);background:linear-gradient(90deg,rgba(0,229,160,.12),var(--panel) 70%);border:1px solid #1d3b31}
+.upd .ic{width:34px;height:34px;border-radius:9px;background:var(--acc-bg);color:var(--acc);display:grid;place-items:center}
+.upd b{display:block}#updS{color:var(--mute);font-size:12.5px}
 .toast{position:fixed;right:22px;bottom:22px;background:var(--panel2);border:1px solid var(--line2);padding:11px 16px 11px 14px;border-radius:10px;max-width:420px;box-shadow:0 10px 40px #000a;opacity:0;transform:translateY(8px);transition:.22s;pointer-events:none;white-space:pre-line;display:flex;gap:10px;z-index:50}
 .toast.show{opacity:1;transform:none}
 .toast svg{color:var(--acc);margin-top:2px}.toast.err svg{color:var(--bad)}
@@ -176,6 +179,7 @@ code{font-family:"Cascadia Code",Consolas,monospace;font-size:12px;background:va
     <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4L21 8"/><path d="M21 3v5h-5"/></symbol>
     <symbol id="i-sweep" viewBox="0 0 24 24"><path d="M3 21h18"/><path d="m14 4 6 6"/><path d="M5 17 15.5 6.5l2 2L7 19H5z"/></symbol>
     <symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5M8 13h8M8 17h6"/></symbol>
+    <symbol id="i-update" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M12 8v5l3 2"/></symbol>
     <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M4.2 18a9 9 0 1 1 15.6 0"/><path d="m12 13 4-5"/><circle cx="12" cy="13" r="1.4"/></symbol>
   </defs>
 </svg>
@@ -204,6 +208,12 @@ code{font-family:"Cascadia Code",Consolas,monospace;font-size:12px;background:va
     </div>
   </nav>
   <main>
+    <div class="upd hidden" id="upd">
+      <div class="ic"><svg class="i"><use href="#i-update"/></svg></div>
+      <div class="grow" style="flex:1"><b id="updT">Mise à jour disponible</b><span id="updS"></span></div>
+      <button class="ghost sm" id="updLater">Plus tard</button>
+      <button class="pri" id="updGo"><svg class="i"><use href="#i-update"/></svg><span>Mettre à jour</span></button>
+    </div>
 
     <!-- VUE D'ENSEMBLE -->
     <section class="page" id="v-home">
@@ -317,6 +327,7 @@ code{font-family:"Cascadia Code",Consolas,monospace;font-size:12px;background:va
       <div class="card">
         <div class="list">
           <label class="item"><span class="sw"><input type="checkbox" id="sAuto"><span></span></span><div class="grow"><span class="nm">Lancer Perf Saver au démarrage de Windows</span><div class="meta">Démarre discrètement dans la zone de notification (icône près de l'horloge).</div></div></label>
+          <label class="item"><span class="sw"><input type="checkbox" id="sUpd" checked><span></span></span><div class="grow"><span class="nm">Rechercher les mises à jour automatiquement</span><div class="meta" id="updStatus">Au lancement puis toutes les 6 heures. Rien n'est installé sans ton accord.</div></div><button class="sm" id="updCheck" type="button"><svg class="i"><use href="#i-refresh"/></svg>Vérifier</button></label>
           <div class="item"><svg class="i" style="color:var(--mute)"><use href="#i-x"/></svg><div class="grow"><span class="nm">Fermer la fenêtre</span><div class="meta">Perf Saver reste disponible dans la zone de notification. Pour quitter : clic droit sur l'icône › Quitter.</div></div></div>
         </div>
       </div>
@@ -325,7 +336,7 @@ code{font-family:"Cascadia Code",Consolas,monospace;font-size:12px;background:va
         <div class="kv">
           <span>Version</span><span id="aVer">–</span>
           <span>Données locales</span><span><code id="aData">–</code></span>
-          <span>Données envoyées</span><span>Aucune. Perf Saver ne se connecte à aucun serveur et ne collecte rien.</span>
+          <span>Données envoyées</span><span>Aucune donnée personnelle. Seule connexion : la lecture du numéro de la dernière version (désactivable ci-dessus).</span>
           <span>Licence</span><span>MIT — logiciel gratuit fourni « en l'état », sans garantie</span>
         </div>
         <div class="row" style="margin-top:14px"><button id="showTerms"><svg class="i"><use href="#i-doc"/></svg>Conditions d'utilisation</button></div>
@@ -352,7 +363,7 @@ code{font-family:"Cascadia Code",Consolas,monospace;font-size:12px;background:va
         <h4>4. Limitation de responsabilité</h4>
         <p>Dans toute la mesure permise par la loi applicable, l'auteur de Perf Saver ne pourra être tenu responsable d'aucun dommage direct ou indirect résultant de l'utilisation ou de l'impossibilité d'utiliser le logiciel, notamment perte de données, dysfonctionnement du système, perte de partie, sanction d'un éditeur de jeu ou dommage matériel. Rien dans ces conditions n'exclut une responsabilité qui ne peut pas l'être légalement.</p>
         <h4>5. Données personnelles</h4>
-        <p>Perf Saver fonctionne entièrement en local. Il ne collecte, ne transmet et ne vend aucune donnée. Ses réglages sont enregistrés uniquement sur ton PC, dans le dossier <code>%LOCALAPPDATA%\PerfSaver</code>, que tu peux supprimer à tout moment.</p>
+        <p>Perf Saver fonctionne en local et ne collecte, ne transmet ni ne vend aucune donnée personnelle. Sa seule connexion réseau est la vérification des mises à jour : une requête vers le site de Perf Saver pour lire le numéro de la dernière version (aucun identifiant n'est envoyé ; l'hébergeur voit l'adresse IP comme pour toute visite). Elle peut être désactivée dans Paramètres. Les réglages sont enregistrés uniquement sur ton PC, dans <code>%LOCALAPPDATA%\PerfSaver</code>, que tu peux supprimer à tout moment.</p>
         <h4>6. Marques</h4>
         <p>Perf Saver n'est affilié à aucun éditeur cité (Microsoft, Valve, Corsair…). Les noms cités le sont uniquement pour identifier les programmes.</p>
         <h4>7. Licence</h4>
@@ -659,6 +670,36 @@ $("sAuto").onchange = async e => {
 };
 $("showTerms").onclick = () => { $("termsChkRow").classList.add("hidden"); $("termsOk").disabled=false; $("termsOk").textContent="Fermer"; $("termsQuit").classList.add("hidden"); $("termsOk").onclick=()=>$("mTerms").classList.add("hidden"); $("mTerms").classList.remove("hidden"); };
 
+// ---------- mises à jour
+let pendingUpdate = null;
+async function checkUpdate(manual){
+  const st = $("updStatus");
+  if (manual){ st.innerHTML = '<span class="spin" style="display:inline-block;vertical-align:-2px"></span> Vérification…'; }
+  try {
+    const info = await invoke("check_update");
+    if (info.available){
+      pendingUpdate = info;
+      $("updT").textContent = "Perf Saver "+info.version+" est disponible";
+      $("updS").textContent = info.notes || "Une nouvelle version est prête à être installée.";
+      $("upd").classList.remove("hidden");
+      st.textContent = "Version "+info.version+" disponible.";
+    } else {
+      st.textContent = "Tu as la dernière version ("+info.version+").";
+      if (manual) toast("Perf Saver est à jour.");
+    }
+  } catch(e){ st.textContent = "Impossible de vérifier pour le moment."; if (manual) toast(String(e), true); }
+}
+$("updLater").onclick = () => $("upd").classList.add("hidden");
+$("updGo").onclick = async () => {
+  if (!pendingUpdate) return;
+  const b = $("updGo"); spinBtn(b, "Téléchargement…"); $("updLater").disabled = true;
+  try { await call("install_update", { info: pendingUpdate }); }
+  catch { unspin(b); $("updLater").disabled = false; }
+};
+$("updCheck").onclick = e => { e.preventDefault(); checkUpdate(true); };
+$("sUpd").onchange = e => invoke("set_auto_update", { enabled: e.target.checked });
+setInterval(() => { if (config && config.auto_update !== false) checkUpdate(false); }, 6*3600*1000);
+
 // ---------- premier lancement
 $("termsChk").onchange = e => $("termsOk").disabled = !e.target.checked;
 $("termsQuit").onclick = () => invoke("quit_app");
@@ -677,6 +718,8 @@ async function onboarding(){
     try { await call("set_autostart", { enabled: choice }); if (choice) toast("Perf Saver se lancera avec Windows"); } catch {}
     config.autostart_asked = true;
   }
+  $("sUpd").checked = config.auto_update !== false;
+  if (config.auto_update !== false) setTimeout(() => checkUpdate(false), 3000);
 }
 
 // ---------- zone de notification

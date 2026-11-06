@@ -4,6 +4,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 VERSION=$(grep -m1 '^version' src-tauri/Cargo.toml | cut -d'"' -f2)
+python3 scripts/gen_legal.py
 EXTRA=()
 if ! rustup target list --installed 2>/dev/null | grep -q x86_64-pc-windows-gnu; then
   # Pas de bibliothèque standard Windows précompilée : on la compile depuis les sources.
@@ -25,3 +26,14 @@ cp "dist/PerfSaver-Setup-$VERSION.exe" site/download/PerfSaver-Setup.exe
 SHA=$(sha256sum "dist/PerfSaver-Setup-$VERSION.exe" | cut -d' ' -f1)
 sed -i -E "s#(<span data-v>)[^<]*(</span>)#\1$VERSION\2#g; s#(<code data-sha>)[^<]*(</code>)#\1$SHA\2#" site/index.html
 echo "Site mis à jour : version $VERSION, SHA-256 $SHA"
+
+# Manifeste lu par l'application pour les mises à jour automatiques
+cat > site/latest.json <<JSON
+{
+  "version": "$VERSION",
+  "url": "/download/PerfSaver-Setup.exe",
+  "sha256": "$SHA",
+  "date": "$(date -u +%Y-%m-%d)",
+  "notes": "Voir les nouveautés sur le site."
+}
+JSON

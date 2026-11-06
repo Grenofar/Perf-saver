@@ -16,7 +16,8 @@
 <p class="date">Dernière mise à jour : 7 novembre 2026</p>
 <p>Perf Saver est conçu pour ne collecter aucune donnée personnelle. Cette page explique ce qui se passe concrètement, pour le logiciel et pour ce site.</p>
 <h2>1. Le logiciel Perf Saver</h2>
-<p>Le logiciel fonctionne <strong>entièrement en local</strong> sur ton ordinateur. Il ne crée aucun compte, n'intègre aucune télémétrie, aucune publicité ni aucun outil de mesure, et ne se connecte à aucun serveur de l'éditeur.</p>
+<p>Le logiciel fonctionne <strong>en local</strong> sur ton ordinateur. Il ne crée aucun compte et n'intègre aucune télémétrie, aucune publicité ni aucun outil de mesure.</p>
+<p>Sa <strong>seule connexion réseau</strong> est la vérification des mises à jour : au lancement puis toutes les 6 heures, il lit le fichier <code>latest.json</code> de ce site, qui contient le numéro de la dernière version. Aucun identifiant ni information sur ton PC n'est envoyé ; comme pour toute visite, l'hébergeur voit ton adresse IP dans ses journaux techniques. Cette vérification se désactive dans Paramètres. Une mise à jour n'est téléchargée et installée que si tu cliques sur « Mettre à jour », et son empreinte SHA-256 est vérifiée avant installation.</p>
 <p>Pour fonctionner, il lit sur ton PC la liste des programmes, des services et des programmes lancés au démarrage. Ces informations sont affichées à l'écran et ne quittent jamais ton ordinateur.</p>
 <p>Tes réglages (choix du mode jeu, acceptation des conditions, démarrage automatique) sont enregistrés uniquement dans le dossier <code>%LOCALAPPDATA%\PerfSaver</code>. Tu peux le supprimer à tout moment.</p>
 <p>L'interface utilise le composant Microsoft Edge WebView2 fourni par Windows ; son fonctionnement et ses mises à jour relèvent de Microsoft et de ses propres conditions.</p>

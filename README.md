@@ -22,6 +22,7 @@
 | **Services** | Services Windows non essentiels et services installés par des logiciels. |
 | **Sécurité** | Détecte les faux processus système (ex. `svchost.exe` hors de `System32`), les noms imités et les programmes lancés depuis un dossier temporaire. |
 | **Zone de notification** | L'icône près de l'horloge permet d'activer le mode jeu ou de libérer la RAM sans ouvrir la fenêtre. Fermer la fenêtre réduit l'application à cet endroit. |
+| **Mises à jour automatiques** | Détecte une nouvelle version, télécharge l'installeur, vérifie son SHA-256, l'installe en silencieux et relance l'app — en un clic. |
 | **Démarrage avec Windows** | Proposé une seule fois au premier lancement, modifiable dans Paramètres. |
 
 ### Garde-fous
@@ -42,7 +43,7 @@ L'application demande les droits administrateur, nécessaires pour gérer les se
 
 ## Confidentialité
 
-Perf Saver fonctionne **100 % en local** : aucune télémétrie, aucun compte, aucune connexion à un serveur. Les réglages sont stockés dans `%LOCALAPPDATA%\PerfSaver` (supprimable à tout moment).
+Perf Saver fonctionne **en local** : aucune télémétrie, aucun compte. Sa seule connexion est la vérification des mises à jour (lecture de `latest.json` sur le site, désactivable dans Paramètres). Les réglages sont stockés dans `%LOCALAPPDATA%\PerfSaver` (supprimable à tout moment).
 
 ## Compiler
 

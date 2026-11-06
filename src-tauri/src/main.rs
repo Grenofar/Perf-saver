@@ -633,9 +633,11 @@ struct Config {
     autostart_asked: bool,
     #[serde(default)]
     terms_accepted: Option<String>,
+    #[serde(default)]
+    auto_update: Option<bool>,
 }
 
-const TERMS_VERSION: &str = "2026-11-07";
+const TERMS_VERSION: &str = "2026-11-07.2";
 
 #[tauri::command]
 fn accept_terms() {
@@ -906,6 +908,98 @@ fn set_autostart(enabled: bool) -> Result<(), String> {
     }
 }
 
+// ---------------------------------------------------------------- mises à jour
+
+/// Manifeste publié par le site de téléchargement (généré par build.sh).
+const UPDATE_URL: &str = "https://perf-saver.vercel.app/latest.json";
+
+#[derive(Serialize, Deserialize, Clone)]
+struct UpdateInfo {
+    version: String,
+    url: String,
+    sha256: String,
+    #[serde(default)]
+    notes: String,
+    #[serde(default)]
+    date: String,
+    #[serde(default)]
+    available: bool,
+}
+
+fn parse_ver(v: &str) -> (u32, u32, u32) {
+    let mut it = v.trim().trim_start_matches('v').split('.').map(|x| {
+        x.chars().take_while(|c| c.is_ascii_digit()).collect::<String>().parse().unwrap_or(0)
+    });
+    (it.next().unwrap_or(0), it.next().unwrap_or(0), it.next().unwrap_or(0))
+}
+
+/// curl.exe est fourni avec Windows 10 (1803+) et 11 : pas besoin d'embarquer une pile TLS.
+fn curl(args: &[&str]) -> Result<Vec<u8>, String> {
+    let o = Command::new("curl.exe")
+        .args(["-fsSL", "--proto", "=https", "--tlsv1.2", "--retry", "2"])
+        .args(args)
+        .creation_flags(NO_WINDOW)
+        .output()
+        .map_err(|e| format!("curl indisponible : {e}"))?;
+    if o.status.success() {
+        Ok(o.stdout)
+    } else {
+        Err(String::from_utf8_lossy(&o.stderr).trim().to_string())
+    }
+}
+
+#[tauri::command]
+async fn check_update() -> Result<UpdateInfo, String> {
+    let body = curl(&["--max-time", "10", UPDATE_URL]).map_err(|e| format!("Vérification impossible : {e}"))?;
+    let mut info: UpdateInfo =
+        serde_json::from_slice(&body).map_err(|_| "Réponse de mise à jour invalide".to_string())?;
+    if info.url.starts_with('/') {
+        let origin = UPDATE_URL.splitn(4, '/').take(3).collect::<Vec<_>>().join("/");
+        info.url = format!("{origin}{}", info.url);
+    }
+    info.available = parse_ver(&info.version) > parse_ver(env!("CARGO_PKG_VERSION"));
+    Ok(info)
+}
+
+/// Télécharge l'installeur, vérifie son SHA-256, le lance en silencieux puis quitte.
+/// L'installeur ferme l'ancienne version, remplace les fichiers et relance l'app.
+#[tauri::command]
+async fn install_update(app: AppHandle, info: UpdateInfo) -> Result<(), String> {
+    use sha2::{Digest, Sha256};
+    if !info.url.starts_with("https://") {
+        return Err("Adresse de téléchargement refusée".into());
+    }
+    let dir = std::env::temp_dir().join("PerfSaverUpdate");
+    let _ = std::fs::create_dir_all(&dir);
+    let (a, b, c) = parse_ver(&info.version);
+    let path = dir.join(format!("PerfSaver-Setup-{a}.{b}.{c}.exe"));
+    let p = path.to_string_lossy().to_string();
+    curl(&["--max-time", "300", "-o", &p, &info.url]).map_err(|e| format!("Téléchargement échoué : {e}"))?;
+    let data = std::fs::read(&path).map_err(|e| e.to_string())?;
+    let hash: String = Sha256::digest(&data).iter().map(|b| format!("{b:02x}")).collect();
+    if !hash.eq_ignore_ascii_case(info.sha256.trim()) {
+        let _ = std::fs::remove_file(&path);
+        return Err("Le fichier téléchargé ne correspond pas à l'empreinte attendue : mise à jour annulée.".into());
+    }
+    let st: GameState = load_json("state.json");
+    if st.active {
+        restore();
+    }
+    Command::new(&path)
+        .args(["/S", "/UPDATE"])
+        .spawn()
+        .map_err(|e| format!("Impossible de lancer l'installeur : {e}"))?;
+    app.exit(0);
+    Ok(())
+}
+
+#[tauri::command]
+fn set_auto_update(enabled: bool) {
+    let mut cfg: Config = load_json("config.json");
+    cfg.auto_update = Some(enabled);
+    save_json("config.json", &cfg);
+}
+
 // ---------------------------------------------------------------- zone de notification
 
 #[tauri::command]
@@ -1020,7 +1114,10 @@ fn main() {
             set_tray_state,
             accept_terms,
             app_info,
-            quit_app
+            quit_app,
+            check_update,
+            install_update,
+            set_auto_update
         ])
         .run(tauri::generate_context!())
         .expect("erreur au lancement de Perf Saver");

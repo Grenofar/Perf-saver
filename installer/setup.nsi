@@ -64,6 +64,12 @@ Section "Install"
   WriteRegDWORD HKLM "${UNKEY}" "NoRepair" 1
 SectionEnd
 
+Function .onInstSuccess
+  ; Mise à jour silencieuse lancée depuis l'application : on la relance.
+  IfSilent 0 +2
+    Exec '"$INSTDIR\PerfSaver.exe"'
+FunctionEnd
+
 Section "Uninstall"
   nsExec::Exec 'taskkill /f /im PerfSaver.exe'
   nsExec::Exec 'schtasks /delete /tn PerfSaver /f'
