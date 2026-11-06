@@ -1,18 +1,39 @@
 name: Release
 
+# Une release est publiée automatiquement quand la version de src-tauri/Cargo.toml
+# change sur main (ou manuellement via « Run workflow »).
 on:
   push:
-    tags: ["v*"]
+    branches: [main]
+    paths: ["src-tauri/**", "ui/**", "installer/**", "build.sh", ".github/workflows/release.yml"]
   workflow_dispatch:
 
 permissions:
   contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 jobs:
   windows-build:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+
+      - name: Version
+        id: v
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(grep -m1 '^version' src-tauri/Cargo.toml | cut -d'"' -f2)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if gh release view "v$VERSION" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "La release v$VERSION existe déjà : build seulement."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Outils de compilation (mingw-w64, NSIS, Rust)
         run: |
@@ -29,18 +50,20 @@ jobs:
         run: ./build.sh
 
       - name: Publication de la release
-        if: startsWith(github.ref, 'refs/tags/')
+        if: steps.v.outputs.exists == 'false'
         uses: softprops/action-gh-release@v2
         with:
-          name: Perf Saver ${{ github.ref_name }}
+          tag_name: v${{ steps.v.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          name: Perf Saver ${{ steps.v.outputs.version }}
           body_path: docs/RELEASE_NOTES.md
+          make_latest: true
           files: |
             dist/PerfSaver-Setup-*.exe
             dist/PerfSaver-portable-*.zip
             dist/SHA256SUMS.txt
 
       - uses: actions/upload-artifact@v4
-        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
         with:
-          name: perfsaver-windows
+          name: perfsaver-windows-${{ steps.v.outputs.version }}
           path: dist/

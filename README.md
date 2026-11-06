@@ -62,7 +62,7 @@ rustup target add x86_64-pc-windows-gnu
 ./build.sh          # → dist/PerfSaver-Setup-x.y.z.exe
 ```
 
-Publier une version : `git tag v1.0.1 && git push --tags` — le workflow GitHub Actions compile et crée la release automatiquement.
+Publier une version : change `version` dans `src-tauri/Cargo.toml` et pousse sur `main` — le workflow GitHub Actions compile et crée la release `vX.Y.Z` automatiquement.
 
 ## Structure
 
