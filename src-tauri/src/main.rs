@@ -982,13 +982,13 @@ fn overlay_action(app: AppHandle, action: String) {
 /// seulement les compteurs déjà utilisés par la vue d'ensemble.
 fn open_hud(app: &AppHandle) {
     use tauri::{LogicalPosition, WebviewUrl, WebviewWindowBuilder};
-    let (w, h) = (300.0, 250.0);
-    let (mut x, mut y) = (24.0, 24.0);
+    let (w, h) = (320.0, 312.0);
+    let (mut x, mut y) = (36.0, 36.0);
     if let Ok(Some(m)) = app.primary_monitor() {
         let sf = m.scale_factor();
         let pos = m.position().to_logical::<f64>(sf);
-        x = pos.x + 24.0;
-        y = pos.y + 24.0;
+        x = pos.x + 36.0;
+        y = pos.y + 36.0;
     }
     let url = WebviewUrl::App("hud.html".into());
     let _ = WebviewWindowBuilder::new(app, "hud", url)
