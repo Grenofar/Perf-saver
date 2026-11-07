@@ -270,7 +270,7 @@ fn build_groups(sys: &System) -> Vec<Group> {
 }
 
 #[tauri::command]
-fn get_snapshot(state: tauri::State<AppState>) -> Result<Snapshot, String> {
+async fn get_snapshot(state: tauri::State<'_, AppState>) -> Result<Snapshot, String> {
     let mut sys = state.sys.lock().map_err(|e| e.to_string())?;
     refresh(&mut sys);
     let st: GameState = load_json("state.json");
@@ -308,7 +308,7 @@ fn kill_name(sys: &System, name: &str) -> usize {
 }
 
 #[tauri::command]
-fn kill_group(state: tauri::State<AppState>, name: String) -> Result<usize, String> {
+async fn kill_group(state: tauri::State<'_, AppState>, name: String) -> Result<usize, String> {
     if is_protected(&name) {
         return Err("Processus protégé : le fermer pourrait faire planter Windows ou ton jeu.".into());
     }
@@ -404,7 +404,7 @@ fn show_window(app: AppHandle) {
 }
 
 #[tauri::command]
-fn set_priority(state: tauri::State<AppState>, name: String, level: String) -> Result<usize, String> {
+async fn set_priority(state: tauri::State<'_, AppState>, name: String, level: String) -> Result<usize, String> {
     let class = match level.as_str() {
         "high" => win::HIGH,
         "below" => win::BELOW,
@@ -423,7 +423,7 @@ fn set_priority(state: tauri::State<AppState>, name: String, level: String) -> R
 }
 
 #[tauri::command]
-fn free_ram(state: tauri::State<AppState>) -> Result<f64, String> {
+async fn free_ram(state: tauri::State<'_, AppState>) -> Result<f64, String> {
     let mut sys = state.sys.lock().map_err(|e| e.to_string())?;
     Ok(trim_all(&mut sys))
 }
@@ -683,6 +683,9 @@ struct GameState {
     stopped_services: Vec<String>,
     prev_power: Option<String>,
     adjusted_pids: Vec<u32>,
+    /// Vidage automatique de la RAM tant que le mode jeu est actif.
+    #[serde(default)]
+    auto_trim: bool,
 }
 
 #[derive(Serialize, Deserialize, Default)]
@@ -697,6 +700,51 @@ struct Config {
     terms_accepted: Option<String>,
     #[serde(default)]
     auto_update: Option<bool>,
+    #[serde(default)]
+    game_on_start: bool,
+}
+
+#[tauri::command]
+fn set_game_on_start(enabled: bool) {
+    let mut cfg: Config = load_json("config.json");
+    cfg.game_on_start = enabled;
+    save_json("config.json", &cfg);
+}
+
+/// Seuil d'utilisation de la mémoire au-delà duquel le mode jeu vide la RAM,
+/// et délai minimal entre deux vidages (évite de ralentir le PC en boucle).
+const RAM_TRIM_THRESHOLD: f64 = 0.70;
+const RAM_TRIM_MIN_GAP: std::time::Duration = std::time::Duration::from_secs(120);
+
+fn ram_guard(app: AppHandle) {
+    std::thread::spawn(move || {
+        let mut last: Option<std::time::Instant> = None;
+        loop {
+            std::thread::sleep(std::time::Duration::from_secs(30));
+            let st: GameState = load_json("state.json");
+            if !st.active || !st.auto_trim {
+                continue;
+            }
+            if last.map(|t| t.elapsed() < RAM_TRIM_MIN_GAP).unwrap_or(false) {
+                continue;
+            }
+            let state = app.state::<AppState>();
+            let Ok(mut sys) = state.sys.lock() else { continue };
+            sys.refresh_memory();
+            let total = sys.total_memory() as f64;
+            if total <= 0.0 {
+                continue;
+            }
+            let used = (total - sys.available_memory() as f64) / total;
+            if used < RAM_TRIM_THRESHOLD {
+                continue;
+            }
+            let freed = trim_all(&mut sys);
+            drop(sys);
+            last = Some(std::time::Instant::now());
+            let _ = app.emit("ram-auto", freed);
+        }
+    });
 }
 
 const TERMS_VERSION: &str = "2026-11-07.2";
@@ -864,6 +912,7 @@ async fn game_mode_on(state: tauri::State<'_, AppState>, req: GameRequest) -> Re
     }
 
     st.active = true;
+    st.auto_trim = req.options.trim;
     save_json("state.json", &st);
     save_json("config.json", &cfg);
     Ok(rep)
@@ -1150,6 +1199,7 @@ fn main() {
         .manage(AppState { sys: Mutex::new(sys), tray_game: Mutex::new(None) })
         .setup(|app| {
             setup_tray(app)?;
+            ram_guard(app.handle().clone());
             let hidden = std::env::args().any(|a| a == "--tray");
             if !hidden {
                 show_main(app.handle());
@@ -1185,6 +1235,7 @@ fn main() {
             check_update,
             install_update,
             set_auto_update,
+            set_game_on_start,
             kill_many,
             show_window
         ])

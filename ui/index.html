@@ -284,7 +284,7 @@ code{font-family:"Cascadia Code",Consolas,monospace;font-size:12px;background:va
               <label class="item"><span class="sw"><input type="checkbox" id="oPower" checked><span></span></span><div class="grow"><span class="nm">Alimentation hautes performances</span><div class="meta">Le processeur reste à sa fréquence maximale.</div></div></label>
               <label class="item"><span class="sw"><input type="checkbox" id="oBoost" checked><span></span></span><div class="grow"><span class="nm">Priorité haute pour le jeu</span><div class="meta">Jeux installés via Steam, Epic, Riot, Xbox, EA, Ubisoft…</div></div></label>
               <label class="item"><span class="sw"><input type="checkbox" id="oLower" checked><span></span></span><div class="grow"><span class="nm">Arrière-plan en priorité basse</span><div class="meta">Les applis gardées ouvertes passent derrière le jeu.</div></div></label>
-              <label class="item"><span class="sw"><input type="checkbox" id="oTrim" checked><span></span></span><div class="grow"><span class="nm">Libérer la RAM</span><div class="meta">Vide la mémoire inutilisée des autres programmes.</div></div></label>
+              <label class="item"><span class="sw"><input type="checkbox" id="oTrim" checked><span></span></span><div class="grow"><span class="nm">Libérer la RAM en continu</span><div class="meta">À l'activation, puis automatiquement quand la mémoire dépasse 70 % (au plus toutes les 2 minutes, le jeu n'est jamais touché).</div></div></label>
             </div>
           </div>
           <div class="card" style="margin-top:14px">
@@ -303,7 +303,7 @@ code{font-family:"Cascadia Code",Consolas,monospace;font-size:12px;background:va
 
     <!-- PROCESSUS -->
     <section class="page hidden" id="v-procs">
-      <div class="head"><div><h1>Processus</h1><p>Regroupés par programme. Clique sur un en-tête pour trier.</p></div></div>
+      <div class="head"><div><h1>Processus</h1><p>Regroupés par programme. Clique sur un en-tête pour trier.</p></div><div class="sp"></div><button id="pLite"><svg class="i"><use href="#i-x"/></svg>Fermer tous les non essentiels</button></div>
       <div class="row" style="margin-bottom:12px">
         <div class="search"><svg class="i"><use href="#i-search"/></svg><input type="text" id="pSearch" placeholder="Rechercher un programme…"></div>
         <select id="pCat">
@@ -353,6 +353,7 @@ code{font-family:"Cascadia Code",Consolas,monospace;font-size:12px;background:va
       <div class="card">
         <div class="list">
           <label class="item"><span class="sw"><input type="checkbox" id="sAuto"><span></span></span><div class="grow"><span class="nm">Lancer Perf Saver au démarrage de Windows</span><div class="meta">Démarre discrètement dans la zone de notification (icône près de l'horloge).</div></div></label>
+          <label class="item"><span class="sw"><input type="checkbox" id="sGameStart"><span></span></span><div class="grow"><span class="nm">Activer le mode jeu au lancement de Perf Saver</span><div class="meta">Utilise ta sélection enregistrée du mode jeu, sans demander de confirmation. Désactivé par défaut.</div></div></label>
           <label class="item"><span class="sw"><input type="checkbox" id="sUpd" checked><span></span></span><div class="grow"><span class="nm">Rechercher les mises à jour automatiquement</span><div class="meta" id="updStatus">Au lancement puis toutes les 6 heures. Rien n'est installé sans ton accord.</div></div><button class="sm" id="updCheck" type="button"><svg class="i"><use href="#i-refresh"/></svg>Vérifier</button></label>
           <div class="item"><svg class="i" style="color:var(--mute)"><use href="#i-x"/></svg><div class="grow"><span class="nm">Fermer la fenêtre</span><div class="meta">Perf Saver reste disponible dans la zone de notification. Pour quitter : clic droit sur l'icône › Quitter.</div></div></div>
         </div>
@@ -410,6 +411,14 @@ code{font-family:"Cascadia Code",Consolas,monospace;font-size:12px;background:va
   </div>
 </div>
 
+<div class="modal hidden" id="mUpd">
+  <div class="dlg" style="width:min(460px,92vw)">
+    <header><div><h2 id="muT">Mise à jour disponible</h2><p id="muS"></p></div></header>
+    <div class="body"><p id="muN" style="color:var(--mute);margin:0"></p></div>
+    <footer><div class="sp"></div><button id="muLater">Plus tard</button><button class="pri" id="muGo"><svg class="i"><use href="#i-update"/></svg><span>Mettre à jour maintenant</span></button></footer>
+  </div>
+</div>
+
 <div class="modal hidden" id="mKill">
   <div class="dlg" style="width:min(540px,92vw)">
     <header><div><h2 id="kT">Fermer ces applications ?</h2><p id="kS"></p></div></header>
@@ -463,16 +472,21 @@ async function loadStartup(force){ if(!startup||force) startup = await invoke("g
 setInterval(() => { if (document.visibilityState==="visible" && (view==="home"||view==="procs")) loadSnap().catch(()=>{}); }, 2000);
 
 // ---------- état du mode jeu
+function renderGameButtons(on){
+  const set = (b, html, cls) => { b.innerHTML = html; b.className = cls; b.disabled = busy; };
+  const lbl = busy ? `<span class="spin"></span><span>${busy==="off"?"Restauration…":"Optimisation…"}</span>`
+                   : `<svg class="i"><use href="#i-${on?"refresh":"bolt"}"/></svg><span>${on?"Désactiver le mode jeu":"Activer le mode jeu"}</span>`;
+  set($("heroBtn"), lbl, on && !busy ? "big" : "pri big");
+  set($("gmOn"), busy ? lbl : `<svg class="i"><use href="#i-bolt"/></svg><span>${on?"Réappliquer":"Activer le mode jeu"}</span>`, "pri big");
+  set($("gmPillBtn"), busy ? `<span class="spin"></span>` : `<svg class="i"><use href="#i-${on?"refresh":"bolt"}"/></svg><span>${on?"Désactiver":"Activer"}</span>`, on && !busy ? "" : "pri");
+  $("btnMax").disabled = $("btnLite").disabled = !!busy;
+  $("gmOff").classList.toggle("hidden", !on || !!busy);
+}
 function setGmState(on){
   for (const d of ["gmDot","gmDot2"]) $(d).classList.toggle("on", on);
   $("gmPillTxt").textContent = $("gmState2").textContent = $("heroT").textContent = on ? "Mode jeu actif" : "Mode jeu inactif";
-  $("gmPillSub").textContent = on ? "Ton PC est optimisé." : "Prêt à optimiser.";
-  $("gmPillBtn").querySelector("span").textContent = on ? "Désactiver" : "Activer";
-  $("gmPillBtn").className = on ? "" : "pri";
-  $("heroBtn").querySelector("span").textContent = on ? "Désactiver le mode jeu" : "Activer le mode jeu";
-  $("heroBtn").className = on ? "big" : "pri big";
-  $("gmOff").classList.toggle("hidden", !on);
-  $("gmOn").querySelector("span").textContent = on ? "Réappliquer" : "Activer le mode jeu";
+  if (!on || !/RAM vidée/.test($("gmPillSub").textContent)) $("gmPillSub").textContent = on ? "RAM surveillée en continu." : "Prêt à optimiser.";
+  renderGameButtons(on);
   invoke("set_tray_state", { active: on }).catch(()=>{});
 }
 async function toggleGame(){ if (snap && snap.game_mode) return gameOff(); return gameOn(); }
@@ -588,17 +602,16 @@ $("gmSvcs").addEventListener("change", renderPreview);
 function countSel(){ const n = document.querySelectorAll("#gmApps input:checked").length; $("gmSel").textContent = n ? n+" sélectionnée"+(n>1?"s":"") : ""; }
 $("gmApps").onchange = () => { countSel(); renderPreview(); };
 const rline = (ok, txt) => `<div class="${ok?"k":"e"}">${ic(ok?"check":"x")}<span>${esc(txt)}</span></div>`;
-async function gameOn(override){
+async function gameOn(override, skipConfirm){
   if (busy) return;
   if (!$("gmApps").dataset.done) await renderGame();
   const req = override || plannedReq();
-  if (req.kill.length){
+  if (req.kill.length && !skipConfirm){
     const chosen = await confirmKill({ title: override ? "Optimisation max : fermer ces applications ?" : "Fermer ces applications ?", sub: "Elles seront fermées avant d'activer le mode jeu.", items: itemsFor(req.kill), yes: "Fermer et activer" });
     if (chosen === null) return;
     req.kill = chosen;
   }
-  busy = true;
-  const btn = $("gmOn"); spinBtn(btn, "Optimisation…"); spinBtn($("heroBtn"), "Optimisation…");
+  busy = "on"; renderGameButtons(!!snap?.game_mode);
   try {
     const r = await call("game_mode_on", { req });
     if (req.save !== false) config = { ...config, kill: req.kill, services: req.services, options: req.options };
@@ -612,10 +625,10 @@ async function gameOn(override){
     $("gmReport").innerHTML = h;
     toast("Mode jeu activé. Bonne partie !");
     services = null; await loadSnap(); if (view==="game") renderGame();
-  } finally { unspin(btn); unspin($("heroBtn")); busy = false; setGmState(!!snap?.game_mode); renderPreview(); }
+  } finally { busy = false; setGmState(!!snap?.game_mode); renderPreview(); }
 }
 async function gameOff(){
-  if (busy) return; busy = true;
+  if (busy) return; busy = "off"; renderGameButtons(true);
   try {
     const r = await call("game_mode_off");
     let h = rline(true, "Mode jeu désactivé");
@@ -625,11 +638,12 @@ async function gameOff(){
     $("gmReport").innerHTML = h;
     toast("Mode jeu désactivé, réglages restaurés.");
     services = null; await loadSnap(); renderPreview();
-  } finally { busy = false; }
+  } finally { busy = false; setGmState(!!snap?.game_mode); }
 }
 $("gmOn").onclick = () => gameOn(); $("gmOff").onclick = gameOff;
 
 // Fermer le non essentiel : uniquement ce qui est classé inutile (le matériel est proposé décoché)
+$("pLite") && ($("pLite").onclick = () => $("btnLite").click());
 $("btnLite").onclick = async () => {
   await loadSnap();
   const list = snap.groups.filter(g => g.category==="inutile" || g.category==="materiel").sort((a,b)=>(a.category==="inutile"?0:1)-(b.category==="inutile"?0:1)||b.mem_mb-a.mem_mb);
@@ -785,6 +799,17 @@ $("showTerms").onclick = () => { $("termsChkRow").classList.add("hidden"); $("te
 
 // ---------- mises à jour
 let pendingUpdate = null;
+let updPopupShown = false;
+async function showUpdatePopup(info){
+  if (updPopupShown) return; updPopupShown = true;
+  try { await invoke("show_window"); } catch {}
+  $("muT").textContent = "Perf Saver "+info.version+" est disponible";
+  $("muS").textContent = "Tu utilises la version "+($("aVer").textContent!=="–" ? $("aVer").textContent : "actuelle")+".";
+  $("muN").textContent = (info.notes || "Une nouvelle version est prête.") + " L'installation prend quelques secondes, puis Perf Saver redémarre tout seul.";
+  $("mUpd").classList.remove("hidden");
+}
+$("muLater").onclick = () => $("mUpd").classList.add("hidden");
+$("muGo").onclick = () => { $("mUpd").classList.add("hidden"); $("updGo").click(); };
 async function checkUpdate(manual){
   const st = $("updStatus");
   if (manual){ st.innerHTML = '<span class="spin" style="display:inline-block;vertical-align:-2px"></span> Vérification…'; }
@@ -796,6 +821,7 @@ async function checkUpdate(manual){
       $("updS").textContent = info.notes || "Une nouvelle version est prête à être installée.";
       $("upd").classList.remove("hidden");
       st.textContent = "Version "+info.version+" disponible.";
+      if (!manual) showUpdatePopup(info);
     } else {
       st.textContent = "Tu as la dernière version ("+info.version+").";
       if (manual) toast("Perf Saver est à jour.");
@@ -831,8 +857,14 @@ async function onboarding(){
     try { await call("set_autostart", { enabled: choice }); if (choice) toast("Perf Saver se lancera avec Windows"); } catch {}
     config.autostart_asked = true;
   }
+  $("aVer").textContent = info.version;
   $("sUpd").checked = config.auto_update !== false;
-  if (config.auto_update !== false) setTimeout(() => checkUpdate(false), 3000);
+  $("sGameStart").checked = !!config.game_on_start;
+  if (config.auto_update !== false) setTimeout(() => checkUpdate(false), 2500);
+}
+$("sGameStart").onchange = e => { invoke("set_game_on_start", { enabled: e.target.checked }); config.game_on_start = e.target.checked; toast(e.target.checked ? "Le mode jeu s'activera au lancement" : "Activation au lancement désactivée"); };
+async function autoGameOnStart(){
+  if (config && config.game_on_start && snap && !snap.game_mode) await gameOn(null, true);
 }
 
 // ---------- zone de notification
@@ -841,8 +873,12 @@ T.event.listen("tray-game", async () => {
   await invoke("show_window"); return gameOn();
 });
 T.event.listen("tray-ram", () => $("btnRam").click());
+T.event.listen("ram-auto", e => {
+  const t = new Date().toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+  $("gmPillSub").textContent = "RAM vidée à "+t+" ("+mb(e.payload||0)+")";
+});
 
-loadSnap().then(() => onboarding()).then(() => renderGame()).catch(()=>{});
+loadSnap().then(() => onboarding()).then(() => renderGame()).then(() => autoGameOnStart()).catch(()=>{});
 </script>
 </body>
 </html>
