@@ -1,6 +1,6 @@
 [package]
 name = "perfsaver"
-version = "1.4.0"
+version = "1.5.0"
 edition = "2021"
 description = "Perf Saver - optimiseur Windows pour le jeu"
 
@@ -24,6 +24,7 @@ windows-sys = { version = "0.60", features = [
   "Win32_Security",
   "Win32_UI_Shell",
   "Win32_System_Registry",
+  "Win32_System_Performance",
 ] }
 
 [profile.release]

@@ -21,6 +21,7 @@ const ULTIMATE_TEMPLATE: &str = "e9a42b02-d5df-448d-aa00-03f14749eb61";
 
 struct AppState {
     sys: Mutex<System>,
+    gpu: Mutex<Option<gpu::Gpu>>,
     tray_game: Mutex<Option<MenuItem<tauri::Wry>>>,
 }
 
@@ -196,6 +197,127 @@ struct Group {
     has_window: bool,
 }
 
+// ---------------------------------------------------------------- carte graphique
+
+/// Utilisation 3D et mémoire vidéo, lues via les compteurs de performances
+/// Windows (les mêmes que le Gestionnaire des tâches).
+mod gpu {
+    use serde::Serialize;
+    use windows_sys::Win32::System::Performance::*;
+
+    #[derive(Serialize, Clone)]
+    pub struct GpuInfo {
+        pub name: String,
+        pub util3d: f64,
+        pub vram_used_mb: f64,
+        pub vram_total_mb: f64,
+    }
+
+    pub struct Gpu {
+        query: PDH_HQUERY,
+        engine: PDH_HCOUNTER,
+        memory: PDH_HCOUNTER,
+        name: String,
+        total_mb: f64,
+    }
+    // Les handles PDH ne sont utilisés que derrière un Mutex.
+    unsafe impl Send for Gpu {}
+
+    fn wide(s: &str) -> Vec<u16> {
+        s.encode_utf16().chain(std::iter::once(0)).collect()
+    }
+
+    /// Carte graphique principale (celle qui a le plus de mémoire dédiée), lue dans le registre.
+    fn adapter() -> (String, f64) {
+        use winreg::enums::HKEY_LOCAL_MACHINE;
+        let base = r"SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}";
+        let mut best = (String::from("Carte graphique"), 0f64);
+        if let Ok(k) = winreg::RegKey::predef(HKEY_LOCAL_MACHINE).open_subkey(base) {
+            for sub in k.enum_keys().flatten() {
+                let Ok(a) = k.open_subkey(&sub) else { continue };
+                let name: String = a.get_value("DriverDesc").unwrap_or_default();
+                let mem: u64 = a
+                    .get_value::<u64, _>("HardwareInformation.qwMemorySize")
+                    .ok()
+                    .or_else(|| {
+                        a.get_raw_value("HardwareInformation.MemorySize").ok().and_then(|v| {
+                            let b = &v.bytes;
+                            (b.len() >= 4).then(|| u32::from_le_bytes([b[0], b[1], b[2], b[3]]) as u64)
+                        })
+                    })
+                    .unwrap_or(0);
+                let mb = mem as f64 / 1_048_576.0;
+                if !name.is_empty() && mb > best.1 {
+                    best = (name, mb);
+                }
+            }
+        }
+        best
+    }
+
+    impl Gpu {
+        pub fn new() -> Option<Gpu> {
+            unsafe {
+                let mut q: PDH_HQUERY = std::ptr::null_mut();
+                if PdhOpenQueryW(std::ptr::null(), 0, &mut q) != 0 {
+                    return None;
+                }
+                let (mut e, mut m): (PDH_HCOUNTER, PDH_HCOUNTER) = (std::ptr::null_mut(), std::ptr::null_mut());
+                let pe = wide("\\GPU Engine(*engtype_3D)\\Utilization Percentage");
+                let pm = wide("\\GPU Adapter Memory(*)\\Dedicated Usage");
+                if PdhAddEnglishCounterW(q, pe.as_ptr(), 0, &mut e) != 0 || PdhAddEnglishCounterW(q, pm.as_ptr(), 0, &mut m) != 0 {
+                    PdhCloseQuery(q);
+                    return None;
+                }
+                PdhCollectQueryData(q);
+                let (name, total_mb) = adapter();
+                Some(Gpu { query: q, engine: e, memory: m, name, total_mb })
+            }
+        }
+
+        fn read(counter: PDH_HCOUNTER) -> Vec<(String, f64)> {
+            unsafe {
+                let (mut size, mut count) = (0u32, 0u32);
+                let st = PdhGetFormattedCounterArrayW(counter, PDH_FMT_DOUBLE, &mut size, &mut count, std::ptr::null_mut());
+                if st != PDH_MORE_DATA || size == 0 {
+                    return vec![];
+                }
+                let mut buf = vec![0u8; size as usize];
+                let items = buf.as_mut_ptr() as *mut PDH_FMT_COUNTERVALUE_ITEM_W;
+                if PdhGetFormattedCounterArrayW(counter, PDH_FMT_DOUBLE, &mut size, &mut count, items) != 0 {
+                    return vec![];
+                }
+                (0..count as usize)
+                    .map(|i| {
+                        let it = &*items.add(i);
+                        let mut n = 0;
+                        while *it.szName.add(n) != 0 {
+                            n += 1;
+                        }
+                        let name = String::from_utf16_lossy(std::slice::from_raw_parts(it.szName, n));
+                        (name, it.FmtValue.Anonymous.doubleValue)
+                    })
+                    .collect()
+            }
+        }
+
+        pub fn sample(&mut self) -> GpuInfo {
+            unsafe {
+                PdhCollectQueryData(self.query);
+            }
+            // Utilisation 3D : somme par carte (identifiée par son LUID), on garde la plus chargée.
+            let mut per: std::collections::HashMap<String, f64> = Default::default();
+            for (name, v) in Self::read(self.engine) {
+                let luid = name.split("_phys").next().unwrap_or("").rsplit("luid_").next().unwrap_or("").to_string();
+                *per.entry(luid).or_default() += v;
+            }
+            let util3d = per.values().cloned().fold(0.0, f64::max).min(100.0);
+            let used = Self::read(self.memory).into_iter().map(|(_, v)| v).fold(0.0, f64::max) / 1_048_576.0;
+            GpuInfo { name: self.name.clone(), util3d, vram_used_mb: used, vram_total_mb: self.total_mb }
+        }
+    }
+}
+
 #[derive(Serialize)]
 struct Snapshot {
     cpu: f32,
@@ -204,6 +326,7 @@ struct Snapshot {
     cores: usize,
     groups: Vec<Group>,
     game_mode: bool,
+    gpu: Option<gpu::GpuInfo>,
 }
 
 fn cores() -> usize {
@@ -296,6 +419,7 @@ async fn get_snapshot(state: tauri::State<'_, AppState>) -> Result<Snapshot, Str
         cores: cores(),
         groups: build_groups(&sys),
         game_mode: st.active,
+        gpu: state.gpu.lock().ok().and_then(|mut g| g.as_mut().map(|g| g.sample())),
     })
 }
 
@@ -1506,7 +1630,7 @@ fn main() {
     refresh(&mut sys);
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| show_main(app)))
-        .manage(AppState { sys: Mutex::new(sys), tray_game: Mutex::new(None) })
+        .manage(AppState { sys: Mutex::new(sys), gpu: Mutex::new(gpu::Gpu::new()), tray_game: Mutex::new(None) })
         .setup(|app| {
             setup_tray(app)?;
             ram_guard(app.handle().clone());
