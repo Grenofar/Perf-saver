@@ -918,7 +918,7 @@ fn url_encode(v: &str) -> String {
 
 /// Petite fenêtre en haut à gauche, au premier plan, qui ne prend pas le focus du jeu.
 fn show_overlay(app: &AppHandle, game: &str, exe: &str) {
-    open_overlay(app, &format!("overlay.html?game={}&exe={}", url_encode(game), url_encode(exe)), 300.0, 90.0);
+    open_overlay(app, &format!("overlay.html?game={}&exe={}", url_encode(game), url_encode(exe)), 300.0, 104.0);
 }
 
 #[tauri::command]
@@ -970,6 +970,67 @@ fn overlay_action(app: AppHandle, action: String) {
         "update" => {
             show_main(&app);
             let _ = app.emit("do-update", ());
+        }
+        _ => {}
+    }
+}
+
+// ---------------------------------------------------------------- HUD de perf (Alt+P)
+
+/// Petit panneau d'activité (CPU/RAM/GPU en direct), ouvert/fermé par le raccourci Alt+P,
+/// comme l'interface superposée des pilotes GPU. Ne capture ni n'injecte rien dans le jeu :
+/// seulement les compteurs déjà utilisés par la vue d'ensemble.
+fn open_hud(app: &AppHandle) {
+    use tauri::{LogicalPosition, WebviewUrl, WebviewWindowBuilder};
+    let (w, h) = (300.0, 250.0);
+    let (mut x, mut y) = (24.0, 24.0);
+    if let Ok(Some(m)) = app.primary_monitor() {
+        let sf = m.scale_factor();
+        let pos = m.position().to_logical::<f64>(sf);
+        x = pos.x + 24.0;
+        y = pos.y + 24.0;
+    }
+    let url = WebviewUrl::App("hud.html".into());
+    let _ = WebviewWindowBuilder::new(app, "hud", url)
+        .title("Perf Saver")
+        .inner_size(w, h)
+        .position(x, y)
+        .decorations(false)
+        .transparent(true)
+        .shadow(false)
+        .resizable(false)
+        .always_on_top(true)
+        .skip_taskbar(true)
+        .focused(false)
+        .build()
+        .map(|win| {
+            let _ = win.set_position(LogicalPosition::new(x, y));
+        });
+}
+
+fn toggle_hud(app: &AppHandle) {
+    if let Some(w) = app.get_webview_window("hud") {
+        if w.is_visible().unwrap_or(false) {
+            let _ = w.hide();
+            let _ = w.emit("hud-visible", false);
+        } else {
+            let _ = w.show();
+            let _ = w.emit("hud-visible", true);
+        }
+        return;
+    }
+    open_hud(app);
+}
+
+#[tauri::command]
+fn hud_action(app: AppHandle, action: String) {
+    match action.as_str() {
+        "open" => show_main(&app),
+        "close" => {
+            if let Some(w) = app.get_webview_window("hud") {
+                let _ = w.hide();
+                let _ = w.emit("hud-visible", false);
+            }
         }
         _ => {}
     }
@@ -1720,12 +1781,24 @@ fn main() {
     refresh(&mut sys);
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| show_main(app)))
+        .plugin(
+            tauri_plugin_global_shortcut::Builder::new()
+                .with_handler(|app, shortcut, event| {
+                    use tauri_plugin_global_shortcut::{Code, Modifiers, ShortcutState};
+                    if event.state() == ShortcutState::Pressed && shortcut.matches(Modifiers::ALT, Code::KeyP) {
+                        toggle_hud(app);
+                    }
+                })
+                .build(),
+        )
         .manage(AppState { sys: Mutex::new(sys), gpu: Mutex::new(gpu::Gpu::new()), tray_game: Mutex::new(None) })
         .setup(|app| {
             setup_tray(app)?;
             ram_guard(app.handle().clone());
             game_watcher(app.handle().clone());
             signal_watcher(app.handle().clone());
+            use tauri_plugin_global_shortcut::GlobalShortcutExt;
+            let _ = app.global_shortcut().register("Alt+P");
             let hidden = std::env::args().any(|a| a == "--tray");
             if !hidden {
                 show_main(app.handle());
@@ -1774,6 +1847,7 @@ fn main() {
             overlay_action,
             notify_update,
             game_icon,
+            hud_action,
             kill_many,
             show_window
         ])

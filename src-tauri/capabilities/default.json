@@ -4,7 +4,8 @@
   "description": "Permissions de base",
   "windows": [
     "main",
-    "overlay"
+    "overlay",
+    "hud"
   ],
   "permissions": [
     "core:default"

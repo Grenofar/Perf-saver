@@ -1,6 +1,6 @@
 [package]
 name = "perfsaver"
-version = "1.6.2"
+version = "1.7.0"
 edition = "2021"
 description = "Perf Saver - optimiseur Windows pour le jeu"
 
@@ -10,6 +10,7 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 tauri = { version = "2", features = ["custom-protocol", "tray-icon", "image-ico"] }
 tauri-plugin-single-instance = "2"
+tauri-plugin-global-shortcut = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = { version = "0.10", default-features = false }
