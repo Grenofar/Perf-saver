@@ -200,3 +200,26 @@ pub const IMPERSONATED: &[(&str, &[&str])] = &[
     ("explorer.exe", &["c:\\windows\\"]),
     ("wmiprvse.exe", &["c:\\windows\\system32\\wbem\\", "c:\\windows\\syswow64\\wbem\\"]),
 ];
+
+/// Logiciels qu'on ne ferme jamais en masse : sécurité, VPN, mots de passe, audio,
+/// accessibilité. Les fermer peut couper Internet, le son ou la protection du PC.
+pub const KEEP: &[(&str, &str)] = &[
+    ("avastui.exe", "Antivirus Avast"), ("avastsvc.exe", "Antivirus Avast"), ("avgui.exe", "Antivirus AVG"),
+    ("avp.exe", "Antivirus Kaspersky"), ("avpui.exe", "Antivirus Kaspersky"), ("norton.exe", "Antivirus Norton"),
+    ("nortonsecurity.exe", "Antivirus Norton"), ("bdagent.exe", "Antivirus Bitdefender"), ("vsserv.exe", "Antivirus Bitdefender"),
+    ("mbam.exe", "Malwarebytes"), ("mbamtray.exe", "Malwarebytes"), ("mbamservice.exe", "Malwarebytes"),
+    ("egui.exe", "Antivirus ESET"), ("ekrn.exe", "Antivirus ESET"), ("mcuicnt.exe", "Antivirus McAfee"), ("mcshield.exe", "Antivirus McAfee"),
+    ("nordvpn.exe", "VPN NordVPN"), ("nordvpn-service.exe", "VPN NordVPN"), ("protonvpn.exe", "VPN Proton"), ("protonvpnservice.exe", "VPN Proton"),
+    ("mullvad vpn.exe", "VPN Mullvad"), ("mullvad-daemon.exe", "VPN Mullvad"), ("expressvpn.exe", "VPN ExpressVPN"),
+    ("wireguard.exe", "VPN WireGuard"), ("openvpn.exe", "VPN OpenVPN"), ("openvpn-gui.exe", "VPN OpenVPN"), ("surfshark.exe", "VPN Surfshark"),
+    ("tailscale-ipn.exe", "Tailscale"), ("tailscaled.exe", "Tailscale"), ("zerotier_desktop_ui.exe", "ZeroTier"),
+    ("1password.exe", "1Password"), ("bitwarden.exe", "Bitwarden"), ("keepass.exe", "KeePass"), ("keepassxc.exe", "KeePassXC"), ("dashlane.exe", "Dashlane"),
+    ("voicemeeter.exe", "Voicemeeter (audio)"), ("voicemeeterpro.exe", "Voicemeeter (audio)"), ("voicemeeter8.exe", "Voicemeeter (audio)"),
+    ("voicemeeter8x64.exe", "Voicemeeter (audio)"), ("voicemeeterpro_x64.exe", "Voicemeeter (audio)"), ("voicemeeter_x64.exe", "Voicemeeter (audio)"),
+    ("nahimicsvc64.exe", "Pilote audio Nahimic"), ("nahimicsvc32.exe", "Pilote audio Nahimic"), ("rtkngui64.exe", "Pilote audio Realtek"),
+    ("equalizerapo.exe", "Equalizer APO"), ("sonar.exe", "SteelSeries Sonar (audio)"),
+    ("magnify.exe", "Loupe (accessibilité)"), ("narrator.exe", "Narrateur (accessibilité)"), ("osk.exe", "Clavier visuel"),
+    ("anydesk.exe", "AnyDesk (contrôle à distance)"), ("teamviewer.exe", "TeamViewer (contrôle à distance)"),
+    ("msiafterburner.exe", "MSI Afterburner (réglages GPU)"), ("rtss.exe", "RivaTuner (compteur FPS)"),
+    ("fancontrol.exe", "Fan Control (ventilateurs)"), ("throttlestop.exe", "ThrottleStop (réglages CPU)"),
+];

@@ -21,7 +21,7 @@
   <div class="wrap">
     <a class="logo" href="/"><img src="/img/icon.png" alt="">Perf Saver</a>
     <nav><a href="#fonctionnalites">Fonctionnalités</a><a href="#confidentialite">Confidentialité</a><a href="#faq">Questions</a></nav>
-    <a class="btn pri sm" href="#telecharger">Télécharger</a>
+    <a class="btn pri sm" href="/download/PerfSaver-Setup.exe" download>Télécharger</a>
   </div>
 </header>
 
@@ -31,10 +31,10 @@
       <h1>Ton PC, réservé à ton jeu.</h1>
       <p class="lead">Perf Saver ferme les programmes qui tournent pour rien, met en pause les services Windows superflus et donne la priorité à ton jeu. Quand tu as fini, tout revient comme avant.</p>
       <div class="cta">
-        <a class="btn pri" href="#telecharger"><svg class="i"><use href="#i-dl"/></svg>Télécharger pour Windows</a>
+        <a class="btn pri" href="/download/PerfSaver-Setup.exe" download><svg class="i"><use href="#i-dl"/></svg>Télécharger pour Windows</a>
         <a class="btn" href="#fonctionnalites">En savoir plus</a>
       </div>
-      <div class="facts"><span>Version <span data-v>1.1.1</span></span><span>Windows 10 et 11</span><span>1,4 Mo</span><span>Gratuit, licence MIT</span></div>
+      <div class="facts"><span>Version <span data-v>1.2.0</span></span><span>Windows 10 et 11</span><span>1,4 Mo</span><span>Gratuit, licence MIT</span></div>
       <div class="shot"><img src="/img/home.webp" width="2360" height="1440" alt="Fenêtre principale de Perf Saver : processeur, mémoire, mode jeu et programmes les plus gourmands"></div>
     </div>
   </div>
@@ -46,6 +46,7 @@
       <p class="sub">Une petite application native, écrite en Rust, qui reste dans la zone de notification et consomme très peu.</p>
       <div class="rows">
         <div class="rowf"><h3>Mode jeu</h3><p>Ferme les applications que tu as choisies, met en pause SysMain, l'indexation et Windows Update, passe l'alimentation en hautes performances et libère la mémoire. Un second clic restaure tout.</p></div>
+        <div class="rowf"><h3>Optimisation max</h3><p>Ferme toutes les applications ouvertes sauf ton jeu et ses launchers, après confirmation. Les programmes d'arrière-plan inconnus, les antivirus et les VPN ne sont jamais touchés.</p></div>
         <div class="rowf"><h3>Priorité au jeu</h3><p>Les jeux installés via Steam, Epic, Riot, Xbox, EA ou Ubisoft sont détectés et passent en priorité haute. Discord, le navigateur et les logiciels RGB passent derrière.</p></div>
         <div class="rowf"><h3>Processus classés</h3><p>Chaque programme est rangé dans une catégorie (jeu, inutile, matériel, application, launcher, Windows) et trié par processeur ou mémoire.</p></div>
         <div class="rowf"><h3>Démarrage</h3><p>Active ou désactive les programmes lancés avec Windows, avec le même mécanisme que le Gestionnaire des tâches.</p></div>
@@ -65,10 +66,11 @@
           <li>Les services sont mis en pause puis relancés, jamais désactivés.</li>
           <li>L'alimentation et les priorités reviennent à leur état d'origine.</li>
           <li>Les processus essentiels de Windows et les anti-triches (Vanguard, BattlEye, EasyAntiCheat) ne peuvent pas être fermés.</li>
-          <li>Tu choisis ce qui est fermé. Aucune action n'a lieu sans toi.</li>
+          <li>Avant de fermer quoi que ce soit, la liste des applications s'affiche et tu peux décocher celles à garder.</li>
+          <li>Antivirus, VPN, gestionnaires de mots de passe et logiciels audio sont toujours conservés.</li>
         </ul>
       </div>
-      <div class="frame"><img src="/img/game.webp" width="2360" height="1440" alt="Écran du mode jeu : applications à fermer, optimisations et services mis en pause"></div>
+      <div class="frame"><img src="/img/game.webp" width="2360" height="1440" alt="Confirmation avant fermeture : liste des applications, chacune pouvant être décochée"></div>
     </div>
   </section>
 
@@ -95,7 +97,7 @@
           <dt>Système</dt><dd>Windows 10 ou 11, 64 bits</dd>
           <dt>Prérequis</dt><dd>Microsoft Edge WebView2, inclus dans Windows 11</dd>
           <dt>Droits</dt><dd>Administrateur, pour gérer les services</dd>
-          <dt>SHA-256</dt><dd><code data-sha>d5726153da769b054e47589577bf17e92266f4f79e0a485c6fb95da28985ba37</code></dd>
+          <dt>SHA-256</dt><dd><code data-sha>54e862d75a8f99ef0c572e1eeee541f940c257f58eef239b22594c9bcbb976e2</code></dd>
         </dl>
       </div>
     </div>

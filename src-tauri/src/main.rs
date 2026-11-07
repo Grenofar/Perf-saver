@@ -89,6 +89,9 @@ fn categorize(name: &str, exe: &str) -> (&'static str, String) {
     if lists::SYSTEM.contains(&n.as_str()) {
         return ("systeme", "Windows / pilote / sécurité".into());
     }
+    if let Some(d) = lookup(lists::KEEP, &n) {
+        return ("protege", d.into());
+    }
     if let Some(d) = lookup(lists::BLOAT, &n) {
         return ("inutile", d.into());
     }
@@ -186,6 +189,8 @@ struct Group {
     mem_mb: f64,
     category: String,
     alert: Option<String>,
+    /// Possède une fenêtre visible (application ouverte par l'utilisateur).
+    has_window: bool,
 }
 
 #[derive(Serialize)]
@@ -218,6 +223,7 @@ fn refresh(sys: &mut System) {
 fn build_groups(sys: &System) -> Vec<Group> {
     let me = std::process::id();
     let nc = cores() as f32;
+    let windows_pids = win::window_pids();
     let mut map: BTreeMap<String, Group> = BTreeMap::new();
     for (pid, p) in sys.processes() {
         if pid.as_u32() == me || pid.as_u32() == 0 {
@@ -238,6 +244,7 @@ fn build_groups(sys: &System) -> Vec<Group> {
                 mem_mb: 0.0,
                 category: cat.into(),
                 alert: None,
+                has_window: false,
             }
         });
         if g.exe.is_empty() && !exe.is_empty() {
@@ -250,6 +257,9 @@ fn build_groups(sys: &System) -> Vec<Group> {
             g.alert = suspicious(&name, &exe);
         }
         g.count += 1;
+        if windows_pids.contains(&pid.as_u32()) {
+            g.has_window = true;
+        }
         g.pids.push(pid.as_u32());
         g.cpu += p.cpu_usage() / nc;
         g.mem_mb += p.memory() as f64 / 1_048_576.0;
@@ -276,7 +286,7 @@ fn get_snapshot(state: tauri::State<AppState>) -> Result<Snapshot, String> {
 
 fn is_protected(name: &str) -> bool {
     let n = name.to_lowercase();
-    lists::SYSTEM.contains(&n.as_str())
+    lists::SYSTEM.contains(&n.as_str()) || lookup(lists::KEEP, &n).is_some()
 }
 
 fn kill_name(sys: &System, name: &str) -> usize {
@@ -308,7 +318,31 @@ fn kill_group(state: tauri::State<AppState>, name: String) -> Result<usize, Stri
 }
 
 mod win {
-    use windows_sys::Win32::Foundation::CloseHandle;
+    use std::collections::HashSet;
+    use windows_sys::Win32::Foundation::{CloseHandle, HWND, LPARAM};
+    use windows_sys::Win32::UI::WindowsAndMessaging::{
+        EnumWindows, GetWindow, GetWindowTextLengthW, GetWindowThreadProcessId, IsWindowVisible, GW_OWNER,
+    };
+
+    unsafe extern "system" fn collect(hwnd: HWND, lp: LPARAM) -> i32 {
+        let set = &mut *(lp as *mut HashSet<u32>);
+        if IsWindowVisible(hwnd) != 0 && GetWindow(hwnd, GW_OWNER).is_null() && GetWindowTextLengthW(hwnd) > 0 {
+            let mut pid = 0u32;
+            GetWindowThreadProcessId(hwnd, &mut pid);
+            set.insert(pid);
+        }
+        1
+    }
+
+    /// PID des programmes qui ont une fenêtre principale visible.
+    pub fn window_pids() -> HashSet<u32> {
+        let mut set: HashSet<u32> = HashSet::new();
+        unsafe {
+            EnumWindows(Some(collect), &mut set as *mut _ as LPARAM);
+        }
+        set
+    }
+
     use windows_sys::Win32::System::ProcessStatus::K32EmptyWorkingSet;
     use windows_sys::Win32::System::Threading::*;
 
@@ -339,6 +373,34 @@ mod win {
     pub const HIGH: u32 = HIGH_PRIORITY_CLASS;
     pub const BELOW: u32 = BELOW_NORMAL_PRIORITY_CLASS;
     pub const NORMAL: u32 = NORMAL_PRIORITY_CLASS;
+}
+
+#[derive(Serialize)]
+struct KillReport {
+    killed: Vec<String>,
+    failed: Vec<String>,
+    ram_freed_mb: f64,
+}
+
+/// Ferme plusieurs programmes d'un coup (après confirmation dans l'interface).
+#[tauri::command]
+async fn kill_many(state: tauri::State<'_, AppState>, names: Vec<String>) -> Result<KillReport, String> {
+    let mut sys = state.sys.lock().map_err(|e| e.to_string())?;
+    refresh(&mut sys);
+    let before = sys.available_memory();
+    let (mut killed, mut failed) = (vec![], vec![]);
+    for n in names {
+        if kill_name(&sys, &n) > 0 { killed.push(n) } else { failed.push(n) }
+    }
+    std::thread::sleep(std::time::Duration::from_millis(500));
+    sys.refresh_memory();
+    let ram_freed_mb = (sys.available_memory() as f64 - before as f64).max(0.0) / 1_048_576.0;
+    Ok(KillReport { killed, failed, ram_freed_mb })
+}
+
+#[tauri::command]
+fn show_window(app: AppHandle) {
+    show_main(&app);
 }
 
 #[tauri::command]
@@ -669,6 +731,9 @@ struct GameRequest {
     kill: Vec<String>,
     services: Vec<String>,
     options: Options,
+    /// false pour « Optimisation max » : ne remplace pas la sélection enregistrée.
+    #[serde(default)]
+    save: Option<bool>,
 }
 
 #[derive(Serialize, Default)]
@@ -711,9 +776,11 @@ async fn game_mode_on(state: tauri::State<'_, AppState>, req: GameRequest) -> Re
     let mut rep = Report::default();
     let mut st: GameState = load_json("state.json");
     let mut cfg: Config = load_json("config.json");
-    cfg.kill = req.kill.clone();
-    cfg.services = req.services.clone();
-    cfg.options = Some(req.options.clone());
+    if req.save != Some(false) {
+        cfg.kill = req.kill.clone();
+        cfg.services = req.services.clone();
+        cfg.options = Some(req.options.clone());
+    }
 
     // 1. fermer les applis choisies
     {
@@ -1117,7 +1184,9 @@ fn main() {
             quit_app,
             check_update,
             install_update,
-            set_auto_update
+            set_auto_update,
+            kill_many,
+            show_window
         ])
         .run(tauri::generate_context!())
         .expect("erreur au lancement de Perf Saver");
