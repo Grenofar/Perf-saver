@@ -25,7 +25,7 @@ button.b.pri{background:#ededed;color:#141414;border-color:#ededed;font-weight:6
 <div class="card" id="card">
   <div class="top">
     <svg width="22" height="22" viewBox="0 0 64 64"><rect x="2" y="2" width="60" height="60" rx="14" fill="#2b2b2b"/><path d="M14.5 44A21 21 0 1 1 49.5 44" fill="none" stroke="#555" stroke-width="5.5" stroke-linecap="round"/><path d="M14.5 44A21 21 0 0 1 43.8 19.6" fill="none" stroke="#ededed" stroke-width="5.5" stroke-linecap="round"/><path d="M32 37 43 24" stroke="#ededed" stroke-width="4.5" stroke-linecap="round"/><circle cx="32" cy="37" r="4.6" fill="#ededed"/></svg>
-    <div style="min-width:0"><div class="t" id="t">Jeu détecté</div><div class="s">Libère ton PC pour gagner en fluidité.</div></div>
+    <div style="min-width:0"><div class="t" id="t">Jeu détecté</div><div class="s" id="s">Libère ton PC pour gagner en fluidité.</div></div>
     <button class="x" id="x" title="Fermer">×</button>
   </div>
   <div class="btns">
@@ -36,12 +36,25 @@ button.b.pri{background:#ededed;color:#141414;border-color:#ededed;font-weight:6
 </div>
 <script>
 const invoke = window.__TAURI__.core.invoke;
-const game = new URLSearchParams(location.search).get("game") || "";
-document.getElementById("t").textContent = game ? game + " détecté" : "Jeu détecté";
 const act = a => invoke("overlay_action", { action: a });
-document.getElementById("x").onclick = () => act("close");
 document.getElementById("open").onclick = () => act("open");
 document.getElementById("game").onclick = () => act("game");
+const q = new URLSearchParams(location.search);
+const $ = id => document.getElementById(id);
+if (q.get("kind") === "update") {
+  // Mise à jour : reste affichée 12 s
+  $("t").textContent = "Perf Saver " + (q.get("v") || "") + " est disponible";
+  $("s").textContent = "Installe la mise à jour en un clic.";
+  $("open").textContent = "Plus tard";
+  $("game").textContent = "Mettre à jour";
+  $("timer").style.animationDuration = "12s";
+  $("open").onclick = () => act("close");
+  $("game").onclick = () => act("update");
+} else {
+  const game = q.get("game") || "";
+  $("t").textContent = game ? game + " détecté" : "Jeu détecté";
+}
+document.getElementById("x").onclick = () => act("close");
 // Disparaît après 5 s (la minuterie se met en pause au survol)
 document.getElementById("timer").addEventListener("animationend", () => act("close"));
 </script>

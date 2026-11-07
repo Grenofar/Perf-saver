@@ -779,6 +779,15 @@ fn url_encode(v: &str) -> String {
 
 /// Petite fenêtre en haut à droite, au premier plan, qui ne prend pas le focus du jeu.
 fn show_overlay(app: &AppHandle, game: &str) {
+    open_overlay(app, &format!("overlay.html?game={}", url_encode(game)));
+}
+
+#[tauri::command]
+fn notify_update(app: AppHandle, version: String) {
+    open_overlay(&app, &format!("overlay.html?kind=update&v={}", url_encode(&version)));
+}
+
+fn open_overlay(app: &AppHandle, page: &str) {
     use tauri::{LogicalPosition, WebviewUrl, WebviewWindowBuilder};
     if let Some(w) = app.get_webview_window("overlay") {
         let _ = w.close();
@@ -792,7 +801,7 @@ fn show_overlay(app: &AppHandle, game: &str) {
         x = pos.x + size.width - w - 24.0;
         y = pos.y + 24.0;
     }
-    let url = WebviewUrl::App(format!("overlay.html?game={}", url_encode(game)).into());
+    let url = WebviewUrl::App(page.into());
     let _ = WebviewWindowBuilder::new(app, "overlay", url)
         .title("Perf Saver")
         .inner_size(w, h)
@@ -820,6 +829,10 @@ fn overlay_action(app: AppHandle, action: String) {
         "game" => {
             show_main(&app);
             let _ = app.emit("tray-game", ());
+        }
+        "update" => {
+            show_main(&app);
+            let _ = app.emit("do-update", ());
         }
         _ => {}
     }
@@ -1372,7 +1385,123 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
     Ok(())
 }
 
+// ---------------------------------------------------------------- instance unique + droits admin
+
+mod elevation {
+    use windows_sys::Win32::Foundation::{CloseHandle, HANDLE};
+    use windows_sys::Win32::Security::{GetTokenInformation, TokenElevation, TOKEN_ELEVATION, TOKEN_QUERY};
+    use windows_sys::Win32::System::Threading::{
+        GetCurrentProcess, OpenProcess, OpenProcessToken, QueryFullProcessImageNameW, PROCESS_QUERY_LIMITED_INFORMATION,
+    };
+    use windows_sys::Win32::UI::Shell::{ShellExecuteExW, SHELLEXECUTEINFOW};
+    use windows_sys::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
+
+    fn wide(s: &str) -> Vec<u16> {
+        s.encode_utf16().chain(std::iter::once(0)).collect()
+    }
+
+    pub fn is_elevated() -> bool {
+        unsafe {
+            let mut t: HANDLE = std::ptr::null_mut();
+            if OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &mut t) == 0 {
+                return false;
+            }
+            let mut e: TOKEN_ELEVATION = std::mem::zeroed();
+            let mut len = 0u32;
+            let ok = GetTokenInformation(
+                t,
+                TokenElevation,
+                &mut e as *mut _ as *mut core::ffi::c_void,
+                std::mem::size_of::<TOKEN_ELEVATION>() as u32,
+                &mut len,
+            ) != 0;
+            CloseHandle(t);
+            ok && e.TokenIsElevated != 0
+        }
+    }
+
+    /// Relance l'application avec les droits administrateur (une seule demande UAC).
+    pub fn relaunch_elevated(args: &str) -> bool {
+        let Ok(exe) = std::env::current_exe() else { return false };
+        let file = wide(&exe.to_string_lossy());
+        let verb = wide("runas");
+        let params = wide(args);
+        unsafe {
+            let mut i: SHELLEXECUTEINFOW = std::mem::zeroed();
+            i.cbSize = std::mem::size_of::<SHELLEXECUTEINFOW>() as u32;
+            i.lpVerb = verb.as_ptr();
+            i.lpFile = file.as_ptr();
+            i.lpParameters = params.as_ptr();
+            i.nShow = SW_SHOWNORMAL as i32;
+            ShellExecuteExW(&mut i) != 0
+        }
+    }
+
+    /// Chemin de l'exécutable d'un processus (fonctionne même s'il est élevé).
+    pub fn process_path(pid: u32) -> Option<String> {
+        unsafe {
+            let h = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid);
+            if h.is_null() {
+                return None;
+            }
+            let mut buf = [0u16; 1024];
+            let mut len = buf.len() as u32;
+            let ok = QueryFullProcessImageNameW(h, 0, buf.as_mut_ptr(), &mut len) != 0;
+            CloseHandle(h);
+            ok.then(|| String::from_utf16_lossy(&buf[..len as usize]))
+        }
+    }
+}
+
+/// Une instance de Perf Saver tourne-t-elle déjà ? (fichier PID + vérification du processus)
+fn running_instance() -> bool {
+    let Ok(txt) = std::fs::read_to_string(data_dir().join("instance.pid")) else { return false };
+    let Ok(pid) = txt.trim().parse::<u32>() else { return false };
+    if pid == std::process::id() {
+        return false;
+    }
+    let me = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.file_name().map(|f| f.to_string_lossy().to_lowercase()))
+        .unwrap_or_default();
+    elevation::process_path(pid)
+        .map(|p| p.to_lowercase().ends_with(&me))
+        .unwrap_or(false)
+}
+
+/// L'instance déjà ouverte surveille ce fichier pour afficher sa fenêtre :
+/// un simple fichier passe entre un processus normal et un processus administrateur.
+fn signal_watcher(app: AppHandle) {
+    std::thread::spawn(move || {
+        let sig = data_dir().join("show.signal");
+        loop {
+            std::thread::sleep(std::time::Duration::from_millis(400));
+            if sig.exists() {
+                let _ = std::fs::remove_file(&sig);
+                let a = app.clone();
+                let _ = app.run_on_main_thread(move || show_main(&a));
+            }
+        }
+    });
+}
+
 fn main() {
+    // 1. Déjà ouvert : on affiche la fenêtre existante, sans demande administrateur.
+    if running_instance() {
+        let _ = std::fs::write(data_dir().join("show.signal"), b"1");
+        return;
+    }
+    // 2. Premier lancement sans droits : une seule demande UAC, puis cette copie se ferme.
+    if !elevation::is_elevated() {
+        let args: Vec<String> = std::env::args().skip(1).collect();
+        if elevation::relaunch_elevated(&args.join(" ")) {
+            return;
+        }
+        // Demande refusée : l'app s'ouvre quand même, avec des fonctions limitées.
+    }
+    let _ = std::fs::write(data_dir().join("instance.pid"), std::process::id().to_string());
+    let _ = std::fs::remove_file(data_dir().join("show.signal"));
+
     let mut sys = System::new();
     refresh(&mut sys);
     tauri::Builder::default()
@@ -1382,6 +1511,7 @@ fn main() {
             setup_tray(app)?;
             ram_guard(app.handle().clone());
             game_watcher(app.handle().clone());
+            signal_watcher(app.handle().clone());
             let hidden = std::env::args().any(|a| a == "--tray");
             if !hidden {
                 show_main(app.handle());
@@ -1423,6 +1553,7 @@ fn main() {
             set_game,
             set_overlay,
             overlay_action,
+            notify_update,
             kill_many,
             show_window
         ])

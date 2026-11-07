@@ -355,7 +355,7 @@ code{font-family:"Cascadia Code",Consolas,monospace;font-size:12px;background:va
           <label class="item"><span class="sw"><input type="checkbox" id="sAuto"><span></span></span><div class="grow"><span class="nm">Lancer Perf Saver au démarrage de Windows</span><div class="meta">Démarre discrètement dans la zone de notification (icône près de l'horloge).</div></div></label>
           <label class="item"><span class="sw"><input type="checkbox" id="sOverlay" checked><span></span></span><div class="grow"><span class="nm">Notification quand un jeu démarre</span><div class="meta">Petit encart de 5 secondes en haut à droite, avec un bouton pour ouvrir Perf Saver ou activer le mode jeu.</div></div></label>
           <label class="item"><span class="sw"><input type="checkbox" id="sGameStart"><span></span></span><div class="grow"><span class="nm">Activer le mode jeu au lancement de Perf Saver</span><div class="meta">Utilise ta sélection enregistrée du mode jeu, sans demander de confirmation. Désactivé par défaut.</div></div></label>
-          <label class="item"><span class="sw"><input type="checkbox" id="sUpd" checked><span></span></span><div class="grow"><span class="nm">Rechercher les mises à jour automatiquement</span><div class="meta" id="updStatus">Au lancement puis toutes les 6 heures. Rien n'est installé sans ton accord.</div></div><button class="sm" id="updCheck" type="button"><svg class="i"><use href="#i-refresh"/></svg>Vérifier</button></label>
+          <label class="item"><span class="sw"><input type="checkbox" id="sUpd" checked><span></span></span><div class="grow"><span class="nm">Rechercher les mises à jour automatiquement</span><div class="meta" id="updStatus">Au lancement puis toutes les 2 heures, avec un petit encart si une version sort. Rien n'est installé sans ton accord.</div></div><button class="sm" id="updCheck" type="button"><svg class="i"><use href="#i-refresh"/></svg>Vérifier</button></label>
           <div class="item"><svg class="i" style="color:var(--mute)"><use href="#i-x"/></svg><div class="grow"><span class="nm">Fermer la fenêtre</span><div class="meta">Perf Saver reste disponible dans la zone de notification. Pour quitter : clic droit sur l'icône › Quitter.</div></div></div>
         </div>
       </div>
@@ -807,8 +807,13 @@ $("showTerms").onclick = () => { $("termsChkRow").classList.add("hidden"); $("te
 // ---------- mises à jour
 let pendingUpdate = null;
 let updPopupShown = false;
-async function showUpdatePopup(info){
-  if (updPopupShown) return; updPopupShown = true;
+async function showUpdatePopup(info, force){
+  if (updPopupShown && !force) return; updPopupShown = true;
+  // Fenêtre cachée (app dans la zone de notification) : petit encart en haut à droite.
+  if (!force && document.visibilityState !== "visible"){
+    invoke("notify_update", { version: info.version }).catch(()=>{});
+    return;
+  }
   try { await invoke("show_window"); } catch {}
   $("muT").textContent = "Perf Saver "+info.version+" est disponible";
   $("muS").textContent = "Tu utilises la version "+($("aVer").textContent!=="–" ? $("aVer").textContent : "actuelle")+".";
@@ -828,7 +833,7 @@ async function checkUpdate(manual){
       $("updS").textContent = info.notes || "Une nouvelle version est prête à être installée.";
       $("upd").classList.remove("hidden");
       st.textContent = "Version "+info.version+" disponible.";
-      if (!manual) showUpdatePopup(info);
+      if (!manual){ notifiedVersion = info.version; showUpdatePopup(info); }
     } else {
       st.textContent = "Tu as la dernière version ("+info.version+").";
       if (manual) toast("Perf Saver est à jour.");
@@ -844,7 +849,22 @@ $("updGo").onclick = async () => {
 };
 $("updCheck").onclick = e => { e.preventDefault(); checkUpdate(true); };
 $("sUpd").onchange = e => invoke("set_auto_update", { enabled: e.target.checked });
-setInterval(() => { if (config && config.auto_update !== false) checkUpdate(false); }, 6*3600*1000);
+// Vérification toutes les 2 heures ; l'encart ne réapparaît qu'une fois par nouvelle version.
+let notifiedVersion = null;
+setInterval(async () => {
+  if (!config || config.auto_update === false) return;
+  try {
+    const info = await invoke("check_update");
+    if (info.available && info.version !== notifiedVersion){
+      notifiedVersion = info.version; pendingUpdate = info;
+      $("updT").textContent = "Perf Saver "+info.version+" est disponible";
+      $("updS").textContent = info.notes || "Une nouvelle version est prête à être installée.";
+      $("upd").classList.remove("hidden");
+      updPopupShown = false; showUpdatePopup(info);
+    }
+  } catch {}
+}, 2*3600*1000);
+T.event.listen("do-update", () => { if (pendingUpdate) showUpdatePopup(pendingUpdate, true); });
 
 // ---------- premier lancement
 $("termsChk").onchange = e => $("termsOk").disabled = !e.target.checked;
