@@ -1,6 +1,6 @@
 [package]
 name = "perfsaver"
-version = "1.7.1"
+version = "1.7.2"
 edition = "2021"
 description = "Perf Saver - optimiseur Windows pour le jeu"
 
