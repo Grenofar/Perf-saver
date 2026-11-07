@@ -7,7 +7,7 @@ use std::collections::{BTreeMap, HashSet};
 use std::os::windows::process::CommandExt;
 use std::path::PathBuf;
 use std::process::Command;
-use std::sync::Mutex;
+use std::sync::{Mutex, OnceLock};
 use sysinfo::{ProcessRefreshKind, ProcessesToUpdate, System, UpdateKind};
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
@@ -83,6 +83,21 @@ fn lookup<'a>(list: &'a [(&'a str, &'a str)], name: &str) -> Option<&'a str> {
     list.iter().find(|(n, _)| *n == name).map(|(_, d)| *d)
 }
 
+/// Liste élargie d'exécutables de jeux (games.json, à côté de lists::GAMES) :
+/// un fichier JSON est plus simple à relire et à compléter que du code Rust.
+static GAMES_JSON: &str = include_str!("../games.json");
+static GAMES_FROM_JSON: OnceLock<HashSet<String>> = OnceLock::new();
+
+fn known_games() -> &'static HashSet<String> {
+    GAMES_FROM_JSON.get_or_init(|| {
+        serde_json::from_str::<Vec<String>>(GAMES_JSON)
+            .unwrap_or_default()
+            .into_iter()
+            .map(|s| s.to_lowercase())
+            .collect()
+    })
+}
+
 /// Retourne (catégorie, description)
 fn categorize(name: &str, exe: &str) -> (&'static str, String) {
     let n = name.to_lowercase();
@@ -93,7 +108,7 @@ fn categorize(name: &str, exe: &str) -> (&'static str, String) {
     if let Some(d) = lookup(lists::KEEP, &n) {
         return ("protege", d.into());
     }
-    if lists::GAMES.contains(&n.as_str()) {
+    if lists::GAMES.contains(&n.as_str()) || known_games().contains(&n) {
         return ("jeu", "Jeu".into());
     }
     if let Some(d) = lookup(lists::BLOAT, &n) {
@@ -1028,11 +1043,13 @@ fn pretty_game(exe: &str) -> String {
     exe.rsplit_once('.').map(|(a, _)| a).unwrap_or(exe).to_string()
 }
 
-/// Surveille le lancement des jeux (toutes les 5 s) et affiche l'overlay
-/// quand un nouveau jeu apparaît et que le mode jeu n'est pas actif.
+/// Surveille le lancement des jeux (toutes les 5 s) et affiche l'overlay.
+/// Un jeu nouvellement vu doit être encore présent au passage suivant (~5 s plus tard)
+/// avant que l'overlay s'affiche, pour ignorer un lanceur qui ne fait que passer.
 fn game_watcher(app: AppHandle) {
     std::thread::spawn(move || {
         let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+        let mut pending: std::collections::HashMap<String, String> = std::collections::HashMap::new();
         let mut first = true;
         loop {
             std::thread::sleep(std::time::Duration::from_secs(if first { 3 } else { 5 }));
@@ -1042,19 +1059,33 @@ fn game_watcher(app: AppHandle) {
                 refresh(&mut sys);
                 build_groups(&sys).into_iter().filter(|g| g.category == "jeu").map(|g| (g.name, g.exe)).collect()
             };
+            let running: std::collections::HashSet<String> = games.iter().map(|(g, _)| g.to_lowercase()).collect();
             let cfg: Config = load_json("config.json");
             let st: GameState = load_json("state.json");
             let enabled = cfg.overlay != Some(false) && cfg.terms_accepted.is_some();
+
+            if enabled && !st.active {
+                for (k, exe) in std::mem::take(&mut pending) {
+                    if !running.contains(&k) {
+                        continue;
+                    }
+                    if let Some((g, _)) = games.iter().find(|(g, _)| g.to_lowercase() == k) {
+                        let label = pretty_game(g);
+                        let a = app.clone();
+                        let _ = app.run_on_main_thread(move || show_overlay(&a, &label, &exe));
+                    }
+                }
+            } else {
+                pending.clear();
+            }
+
             for (g, exe) in &games {
                 let k = g.to_lowercase();
-                if seen.insert(k) && !first && enabled && !st.active {
-                    let label = pretty_game(g);
-                    let a = app.clone();
-                    let exe = exe.clone();
-                    let _ = app.run_on_main_thread(move || show_overlay(&a, &label, &exe));
+                if seen.insert(k.clone()) && !first {
+                    pending.insert(k, exe.clone());
                 }
             }
-            seen.retain(|k| games.iter().any(|(g, _)| g.to_lowercase() == *k));
+            seen.retain(|k| running.contains(k));
             first = false;
         }
     });
