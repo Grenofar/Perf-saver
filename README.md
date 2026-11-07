@@ -32,7 +32,9 @@
 
 ## Installation
 
-Télécharge la dernière version dans **[Releases](../../releases/latest)** :
+Site officiel : **https://perf-saver.vercel.app**
+
+Ou télécharge la dernière version dans **[Releases](../../releases/latest)** :
 
 - `PerfSaver-Setup-x.y.z.exe` — installeur (raccourcis Bureau et menu Démarrer, désinstallation propre)
 - `PerfSaver-portable-x.y.z.zip` — version sans installation
