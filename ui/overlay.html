@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<style>
+html,body{margin:0;background:transparent;overflow:hidden;font:13px/1.4 "Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;color:#ededed;-webkit-font-smoothing:antialiased;user-select:none}
+.card{position:absolute;inset:4px;background:rgba(32,32,32,.97);border:1px solid #3b3b3b;border-radius:10px;padding:12px 14px 14px;display:flex;flex-direction:column;gap:10px;overflow:hidden;animation:in .22s ease-out}
+@keyframes in{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:none}}
+.top{display:flex;align-items:center;gap:10px}
+.top svg{flex:none}
+.t{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.s{color:#a3a3a3;font-size:12px}
+.x{margin-left:auto;background:none;border:0;color:#8a8a8a;cursor:pointer;font-size:16px;line-height:1;padding:2px 4px;border-radius:4px}
+.x:hover{color:#fff;background:#333}
+.btns{display:flex;gap:8px}
+button.b{flex:1;font:inherit;font-size:12.5px;padding:6px 10px;border-radius:6px;border:1px solid #3b3b3b;background:#2b2b2b;color:#ededed;cursor:pointer}
+button.b:hover{background:#333}
+button.b.pri{background:#ededed;color:#141414;border-color:#ededed;font-weight:600}
+.timer{position:absolute;left:0;bottom:0;height:2px;background:#5b9bd5;width:100%;animation:t 5s linear forwards}
+@keyframes t{to{width:0}}
+.card:hover .timer{animation-play-state:paused}
+</style>
+</head>
+<body>
+<div class="card" id="card">
+  <div class="top">
+    <svg width="22" height="22" viewBox="0 0 64 64"><rect x="2" y="2" width="60" height="60" rx="14" fill="#2b2b2b"/><path d="M14.5 44A21 21 0 1 1 49.5 44" fill="none" stroke="#555" stroke-width="5.5" stroke-linecap="round"/><path d="M14.5 44A21 21 0 0 1 43.8 19.6" fill="none" stroke="#ededed" stroke-width="5.5" stroke-linecap="round"/><path d="M32 37 43 24" stroke="#ededed" stroke-width="4.5" stroke-linecap="round"/><circle cx="32" cy="37" r="4.6" fill="#ededed"/></svg>
+    <div style="min-width:0"><div class="t" id="t">Jeu détecté</div><div class="s">Libère ton PC pour gagner en fluidité.</div></div>
+    <button class="x" id="x" title="Fermer">×</button>
+  </div>
+  <div class="btns">
+    <button class="b" id="open">Ouvrir Perf Saver</button>
+    <button class="b pri" id="game">Activer le mode jeu</button>
+  </div>
+  <div class="timer" id="timer"></div>
+</div>
+<script>
+const invoke = window.__TAURI__.core.invoke;
+const game = new URLSearchParams(location.search).get("game") || "";
+document.getElementById("t").textContent = game ? game + " détecté" : "Jeu détecté";
+const act = a => invoke("overlay_action", { action: a });
+document.getElementById("x").onclick = () => act("close");
+document.getElementById("open").onclick = () => act("open");
+document.getElementById("game").onclick = () => act("game");
+// Disparaît après 5 s (la minuterie se met en pause au survol)
+document.getElementById("timer").addEventListener("animationend", () => act("close"));
+</script>
+</body>
+</html>

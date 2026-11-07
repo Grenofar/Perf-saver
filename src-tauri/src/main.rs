@@ -92,6 +92,9 @@ fn categorize(name: &str, exe: &str) -> (&'static str, String) {
     if let Some(d) = lookup(lists::KEEP, &n) {
         return ("protege", d.into());
     }
+    if lists::GAMES.contains(&n.as_str()) {
+        return ("jeu", "Jeu".into());
+    }
     if let Some(d) = lookup(lists::BLOAT, &n) {
         return ("inutile", d.into());
     }
@@ -224,6 +227,8 @@ fn build_groups(sys: &System) -> Vec<Group> {
     let me = std::process::id();
     let nc = cores() as f32;
     let windows_pids = win::window_pids();
+    let full_pids = win::fullscreen_pids();
+    let user_games: Vec<String> = load_json::<Config>("config.json").games.iter().map(|g| g.to_lowercase()).collect();
     let mut map: BTreeMap<String, Group> = BTreeMap::new();
     for (pid, p) in sys.processes() {
         if pid.as_u32() == me || pid.as_u32() == 0 {
@@ -260,9 +265,19 @@ fn build_groups(sys: &System) -> Vec<Group> {
         if windows_pids.contains(&pid.as_u32()) {
             g.has_window = true;
         }
+        if full_pids.contains(&pid.as_u32()) && !matches!(g.category.as_str(), "systeme" | "jeu") && name.to_lowercase() != "explorer.exe" {
+            g.category = "jeu".into();
+            g.label = "Jeu détecté (plein écran)".into();
+        }
         g.pids.push(pid.as_u32());
         g.cpu += p.cpu_usage() / nc;
         g.mem_mb += p.memory() as f64 / 1_048_576.0;
+    }
+    for g in map.values_mut() {
+        if user_games.contains(&g.name.to_lowercase()) {
+            g.category = "jeu".into();
+            g.label = "Jeu (ajouté par toi)".into();
+        }
     }
     let mut v: Vec<Group> = map.into_values().collect();
     v.sort_by(|a, b| b.mem_mb.partial_cmp(&a.mem_mb).unwrap_or(std::cmp::Ordering::Equal));
@@ -339,6 +354,43 @@ mod win {
         let mut set: HashSet<u32> = HashSet::new();
         unsafe {
             EnumWindows(Some(collect), &mut set as *mut _ as LPARAM);
+        }
+        set
+    }
+
+    unsafe extern "system" fn collect_full(hwnd: HWND, lp: LPARAM) -> i32 {
+        use windows_sys::Win32::Foundation::RECT;
+        use windows_sys::Win32::Graphics::Gdi::{GetMonitorInfoW, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTONEAREST};
+        use windows_sys::Win32::UI::WindowsAndMessaging::{GetShellWindow, GetDesktopWindow, GetWindowRect};
+        let set = &mut *(lp as *mut HashSet<u32>);
+        if IsWindowVisible(hwnd) == 0 || hwnd == GetShellWindow() || hwnd == GetDesktopWindow() {
+            return 1;
+        }
+        let mut r: RECT = std::mem::zeroed();
+        if GetWindowRect(hwnd, &mut r) == 0 {
+            return 1;
+        }
+        let mon = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+        let mut mi: MONITORINFO = std::mem::zeroed();
+        mi.cbSize = std::mem::size_of::<MONITORINFO>() as u32;
+        if GetMonitorInfoW(mon, &mut mi) == 0 {
+            return 1;
+        }
+        let m = mi.rcMonitor;
+        // Fenêtre qui couvre tout l'écran : plein écran ou fenêtré sans bordure.
+        if r.left <= m.left && r.top <= m.top && r.right >= m.right && r.bottom >= m.bottom {
+            let mut pid = 0u32;
+            GetWindowThreadProcessId(hwnd, &mut pid);
+            set.insert(pid);
+        }
+        1
+    }
+
+    /// PID des programmes affichés en plein écran (très probablement un jeu).
+    pub fn fullscreen_pids() -> HashSet<u32> {
+        let mut set: HashSet<u32> = HashSet::new();
+        unsafe {
+            EnumWindows(Some(collect_full), &mut set as *mut _ as LPARAM);
         }
         set
     }
@@ -702,6 +754,135 @@ struct Config {
     auto_update: Option<bool>,
     #[serde(default)]
     game_on_start: bool,
+    /// Programmes que l'utilisateur a marqués comme jeux.
+    #[serde(default)]
+    games: Vec<String>,
+    /// Overlay de 5 s quand un jeu démarre (activé par défaut).
+    #[serde(default)]
+    overlay: Option<bool>,
+}
+
+#[tauri::command]
+fn set_overlay(enabled: bool) {
+    let mut cfg: Config = load_json("config.json");
+    cfg.overlay = Some(enabled);
+    save_json("config.json", &cfg);
+}
+
+// ---------------------------------------------------------------- overlay « jeu détecté »
+
+fn url_encode(v: &str) -> String {
+    v.bytes()
+        .map(|b| if b.is_ascii_alphanumeric() || b"-_.".contains(&b) { (b as char).to_string() } else { format!("%{b:02X}") })
+        .collect()
+}
+
+/// Petite fenêtre en haut à droite, au premier plan, qui ne prend pas le focus du jeu.
+fn show_overlay(app: &AppHandle, game: &str) {
+    use tauri::{LogicalPosition, WebviewUrl, WebviewWindowBuilder};
+    if let Some(w) = app.get_webview_window("overlay") {
+        let _ = w.close();
+    }
+    let (w, h) = (360.0, 104.0);
+    let (mut x, mut y) = (1400.0, 24.0);
+    if let Ok(Some(m)) = app.primary_monitor() {
+        let sf = m.scale_factor();
+        let size = m.size().to_logical::<f64>(sf);
+        let pos = m.position().to_logical::<f64>(sf);
+        x = pos.x + size.width - w - 24.0;
+        y = pos.y + 24.0;
+    }
+    let url = WebviewUrl::App(format!("overlay.html?game={}", url_encode(game)).into());
+    let _ = WebviewWindowBuilder::new(app, "overlay", url)
+        .title("Perf Saver")
+        .inner_size(w, h)
+        .position(x, y)
+        .decorations(false)
+        .transparent(true)
+        .shadow(false)
+        .resizable(false)
+        .always_on_top(true)
+        .skip_taskbar(true)
+        .focused(false)
+        .build()
+        .map(|win| {
+            let _ = win.set_position(LogicalPosition::new(x, y));
+        });
+}
+
+#[tauri::command]
+fn overlay_action(app: AppHandle, action: String) {
+    if let Some(w) = app.get_webview_window("overlay") {
+        let _ = w.close();
+    }
+    match action.as_str() {
+        "open" => show_main(&app),
+        "game" => {
+            show_main(&app);
+            let _ = app.emit("tray-game", ());
+        }
+        _ => {}
+    }
+}
+
+/// Nom lisible pour les jeux connus (sinon le nom de l'exécutable sans « .exe »).
+fn pretty_game(exe: &str) -> String {
+    let n = exe.to_lowercase();
+    let known = [
+        ("robloxplayerbeta", "Roblox"), ("windows10universal", "Roblox"), ("robloxstudio", "Roblox Studio"),
+        ("x-plane", "X-Plane"), ("flightsimulator2024", "Flight Simulator 2024"), ("flightsimulator", "Flight Simulator"),
+        ("javaw", "Minecraft"), ("minecraft", "Minecraft"), ("fortniteclient", "Fortnite"), ("valorant", "Valorant"),
+        ("league of legends", "League of Legends"), ("cs2", "Counter-Strike 2"), ("r5apex", "Apex Legends"),
+        ("gta5", "GTA V"), ("rocketleague", "Rocket League"), ("tslgame", "PUBG"), ("rainbowsix", "Rainbow Six Siege"),
+        ("overwatch", "Overwatch 2"), ("genshinimpact", "Genshin Impact"), ("marvel-win64", "Marvel Rivals"),
+    ];
+    for (k, v) in known {
+        if n.starts_with(k) {
+            return v.to_string();
+        }
+    }
+    exe.rsplit_once('.').map(|(a, _)| a).unwrap_or(exe).to_string()
+}
+
+/// Surveille le lancement des jeux (toutes les 5 s) et affiche l'overlay
+/// quand un nouveau jeu apparaît et que le mode jeu n'est pas actif.
+fn game_watcher(app: AppHandle) {
+    std::thread::spawn(move || {
+        let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+        let mut first = true;
+        loop {
+            std::thread::sleep(std::time::Duration::from_secs(if first { 3 } else { 5 }));
+            let games: Vec<String> = {
+                let state = app.state::<AppState>();
+                let Ok(mut sys) = state.sys.lock() else { continue };
+                refresh(&mut sys);
+                build_groups(&sys).into_iter().filter(|g| g.category == "jeu").map(|g| g.name).collect()
+            };
+            let cfg: Config = load_json("config.json");
+            let st: GameState = load_json("state.json");
+            let enabled = cfg.overlay != Some(false) && cfg.terms_accepted.is_some();
+            for g in &games {
+                let k = g.to_lowercase();
+                if seen.insert(k) && !first && enabled && !st.active {
+                    let label = pretty_game(g);
+                    let a = app.clone();
+                    let _ = app.run_on_main_thread(move || show_overlay(&a, &label));
+                }
+            }
+            seen.retain(|k| games.iter().any(|g| g.to_lowercase() == *k));
+            first = false;
+        }
+    });
+}
+
+#[tauri::command]
+fn set_game(name: String, is_game: bool) {
+    let mut cfg: Config = load_json("config.json");
+    cfg.games.retain(|g| !g.eq_ignore_ascii_case(&name));
+    if is_game {
+        cfg.games.push(name);
+    }
+    save_json("config.json", &cfg);
 }
 
 #[tauri::command]
@@ -1200,6 +1381,7 @@ fn main() {
         .setup(|app| {
             setup_tray(app)?;
             ram_guard(app.handle().clone());
+            game_watcher(app.handle().clone());
             let hidden = std::env::args().any(|a| a == "--tray");
             if !hidden {
                 show_main(app.handle());
@@ -1209,8 +1391,10 @@ fn main() {
         .on_window_event(|w, ev| {
             // Fermer la fenêtre = réduire dans la zone de notification
             if let WindowEvent::CloseRequested { api, .. } = ev {
-                api.prevent_close();
-                let _ = w.hide();
+                if w.label() == "main" {
+                    api.prevent_close();
+                    let _ = w.hide();
+                }
             }
         })
         .invoke_handler(tauri::generate_handler![
@@ -1236,6 +1420,9 @@ fn main() {
             install_update,
             set_auto_update,
             set_game_on_start,
+            set_game,
+            set_overlay,
+            overlay_action,
             kill_many,
             show_window
         ])

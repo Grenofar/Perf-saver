@@ -17,7 +17,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:13.5p
 ::selection{background:var(--acc-bg)}
 ::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:#3a3a3a;border-radius:10px;border:3px solid var(--bg)}::-webkit-scrollbar-track{background:transparent}
 svg.i{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
-button{font:inherit;color:var(--text);cursor:pointer;border:1px solid var(--line2);background:var(--panel2);padding:6px 12px;border-radius:6px;display:inline-flex;align-items:center;gap:7px;transition:background .12s,border-color .12s}
+button{font:inherit;color:var(--text);cursor:pointer;white-space:nowrap;border:1px solid var(--line2);background:var(--panel2);padding:6px 12px;border-radius:6px;display:inline-flex;align-items:center;gap:7px;transition:background .12s,border-color .12s}
 button:hover{background:var(--hover)}
 button.pri{background:#ededed;color:#141414;border-color:#ededed;font-weight:600}
 button.pri:hover{background:#ffffff;border-color:#ffffff}
@@ -303,7 +303,7 @@ code{font-family:"Cascadia Code",Consolas,monospace;font-size:12px;background:va
 
     <!-- PROCESSUS -->
     <section class="page hidden" id="v-procs">
-      <div class="head"><div><h1>Processus</h1><p>Regroupés par programme. Clique sur un en-tête pour trier.</p></div><div class="sp"></div><button id="pLite"><svg class="i"><use href="#i-x"/></svg>Fermer tous les non essentiels</button></div>
+      <div class="head"><div><h1>Processus</h1><p>Regroupés par programme. Un jeu non reconnu ? Clique sur l'icône manette pour l'ajouter à tes jeux.</p></div><div class="sp"></div><button id="pLite"><svg class="i"><use href="#i-x"/></svg>Fermer tous les non essentiels</button></div>
       <div class="row" style="margin-bottom:12px">
         <div class="search"><svg class="i"><use href="#i-search"/></svg><input type="text" id="pSearch" placeholder="Rechercher un programme…"></div>
         <select id="pCat">
@@ -353,6 +353,7 @@ code{font-family:"Cascadia Code",Consolas,monospace;font-size:12px;background:va
       <div class="card">
         <div class="list">
           <label class="item"><span class="sw"><input type="checkbox" id="sAuto"><span></span></span><div class="grow"><span class="nm">Lancer Perf Saver au démarrage de Windows</span><div class="meta">Démarre discrètement dans la zone de notification (icône près de l'horloge).</div></div></label>
+          <label class="item"><span class="sw"><input type="checkbox" id="sOverlay" checked><span></span></span><div class="grow"><span class="nm">Notification quand un jeu démarre</span><div class="meta">Petit encart de 5 secondes en haut à droite, avec un bouton pour ouvrir Perf Saver ou activer le mode jeu.</div></div></label>
           <label class="item"><span class="sw"><input type="checkbox" id="sGameStart"><span></span></span><div class="grow"><span class="nm">Activer le mode jeu au lancement de Perf Saver</span><div class="meta">Utilise ta sélection enregistrée du mode jeu, sans demander de confirmation. Désactivé par défaut.</div></div></label>
           <label class="item"><span class="sw"><input type="checkbox" id="sUpd" checked><span></span></span><div class="grow"><span class="nm">Rechercher les mises à jour automatiquement</span><div class="meta" id="updStatus">Au lancement puis toutes les 6 heures. Rien n'est installé sans ton accord.</div></div><button class="sm" id="updCheck" type="button"><svg class="i"><use href="#i-refresh"/></svg>Vérifier</button></label>
           <div class="item"><svg class="i" style="color:var(--mute)"><use href="#i-x"/></svg><div class="grow"><span class="nm">Fermer la fenêtre</span><div class="meta">Perf Saver reste disponible dans la zone de notification. Pour quitter : clic droit sur l'icône › Quitter.</div></div></div>
@@ -682,7 +683,7 @@ function renderProcs(){
     const prot = g.category==="systeme";
     return `<tr><td><div class="nm">${esc(title(g))}</div><div class="path">${esc(g.exe||g.name)}</div>${g.alert?`<div class="alert">${ic("warn")}${esc(g.alert)}</div>`:""}</td>
       <td>${tag(g.category)}</td><td class="num">${g.cpu.toFixed(1)} %</td><td class="num">${mb(g.mem_mb)}</td><td class="num">${g.count}</td>
-      <td><div class="acts">${g.exe?`<button class="icon ghost" data-loc="${esc(g.exe)}" title="Ouvrir l'emplacement">${ic("folder")}</button>`:""}${prot?"":`<button class="icon ghost" data-hi="${esc(g.name)}" title="Priorité haute">${ic("up")}</button><button class="sm danger" data-kill="${esc(g.name)}">Fermer</button>`}</div></td></tr>`;
+      <td><div class="acts">${g.exe?`<button class="icon ghost" data-loc="${esc(g.exe)}" title="Ouvrir l'emplacement">${ic("folder")}</button>`:""}${(prot||g.category==="protege")?"":`<button class="icon ghost" data-isgame="${esc(g.name)}" data-on="${g.label==="Jeu (ajouté par toi)"?1:0}" title="${g.label==="Jeu (ajouté par toi)"?"Retirer de mes jeux":"C'est un jeu : ne jamais le fermer"}">${ic("game")}</button>${g.category==="jeu"?"":`<button class="icon ghost" data-hi="${esc(g.name)}" title="Priorité haute">${ic("up")}</button><button class="sm danger" data-kill="${esc(g.name)}">Fermer</button>`}`}</div></td></tr>`;
   }).join("") || `<tr><td colspan="6"><div class="empty">Aucun résultat.</div></td></tr>`;
 }
 $("pBody").onclick = async e => {
@@ -691,6 +692,12 @@ $("pBody").onclick = async e => {
     const ok = await confirmKill({ title: "Fermer cette application ?", items: itemsFor([b.dataset.kill]) });
     if (!ok || !ok.length) return;
     const n = await call("kill_group",{name:b.dataset.kill}); toast(n ? b.dataset.kill+" fermé" : "Impossible de fermer "+b.dataset.kill, !n); loadSnap(); }
+  if (b.dataset.isgame){
+    const on = b.dataset.on !== "1";
+    await call("set_game", { name: b.dataset.isgame, isGame: on });
+    toast(on ? b.dataset.isgame+" ajouté à tes jeux : il ne sera jamais fermé" : b.dataset.isgame+" retiré de tes jeux");
+    await loadSnap(); return;
+  }
   if (b.dataset.hi){ const n = await call("set_priority",{name:b.dataset.hi, level:"high"}); toast(n ? b.dataset.hi+" passé en priorité haute" : "Impossible de changer la priorité", !n); }
   if (b.dataset.loc) call("open_location",{path:b.dataset.loc});
 };
@@ -860,8 +867,10 @@ async function onboarding(){
   $("aVer").textContent = info.version;
   $("sUpd").checked = config.auto_update !== false;
   $("sGameStart").checked = !!config.game_on_start;
+  $("sOverlay").checked = config.overlay !== false;
   if (config.auto_update !== false) setTimeout(() => checkUpdate(false), 2500);
 }
+$("sOverlay").onchange = e => { invoke("set_overlay", { enabled: e.target.checked }); config.overlay = e.target.checked; };
 $("sGameStart").onchange = e => { invoke("set_game_on_start", { enabled: e.target.checked }); config.game_on_start = e.target.checked; toast(e.target.checked ? "Le mode jeu s'activera au lancement" : "Activation au lancement désactivée"); };
 async function autoGameOnStart(){
   if (config && config.game_on_start && snap && !snap.game_mode) await gameOn(null, true);

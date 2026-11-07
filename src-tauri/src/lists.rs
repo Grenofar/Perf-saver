@@ -138,6 +138,16 @@ pub const LAUNCHERS: &[(&str, &str)] = &[
 
 /// Dossiers où sont installés les jeux.
 pub const GAME_DIRS: &[&str] = &[
+    "\\appdata\\local\\roblox\\",
+    "\\robloxcorporation.",
+    "\\x-plane",
+    "\\steamlibrary\\",
+    "\\gog games\\",
+    "\\amazon games\\",
+    "\\itch\\apps\\",
+    "\\.minecraft\\",
+    "\\microsoft.flightsimulator",
+    "\\microsoft.minecraftuwp",
     "\\steamapps\\common\\",
     "\\epic games\\",
     "\\riot games\\",
@@ -222,4 +232,22 @@ pub const KEEP: &[(&str, &str)] = &[
     ("anydesk.exe", "AnyDesk (contrôle à distance)"), ("teamviewer.exe", "TeamViewer (contrôle à distance)"),
     ("msiafterburner.exe", "MSI Afterburner (réglages GPU)"), ("rtss.exe", "RivaTuner (compteur FPS)"),
     ("fancontrol.exe", "Fan Control (ventilateurs)"), ("throttlestop.exe", "ThrottleStop (réglages CPU)"),
+];
+
+/// Exécutables de jeux connus, quel que soit leur dossier d'installation.
+pub const GAMES: &[&str] = &[
+    "robloxplayerbeta.exe", "windows10universal.exe", "robloxstudiobeta.exe",
+    "x-plane.exe", "x-plane 12.exe", "x-plane 11.exe",
+    "flightsimulator.exe", "flightsimulator2024.exe",
+    "minecraft.windows.exe", "javaw.exe",
+    "fortniteclient-win64-shipping.exe", "valorant-win64-shipping.exe", "league of legends.exe",
+    "cs2.exe", "csgo.exe", "dota2.exe", "gta5.exe", "gta5_enhanced.exe", "rdr2.exe",
+    "rocketleague.exe", "r5apex.exe", "r5apex_dx12.exe", "overwatch.exe", "cod.exe",
+    "rainbowsix.exe", "rainbowsix_vulkan.exe", "eldenring.exe", "cyberpunk2077.exe", "witcher3.exe",
+    "tslgame.exe", "destiny2.exe", "warframe.x64.exe", "palworld-win64-shipping.exe", "helldivers2.exe",
+    "bf2042.exe", "rustclient.exe", "osu!.exe", "genshinimpact.exe", "zenlesszonezero.exe", "starrail.exe",
+    "wow.exe", "hearthstone.exe", "diablo iv.exe", "terraria.exe", "stardew valley.exe", "among us.exe",
+    "geometrydash.exe", "deadlock.exe", "marvel-win64-shipping.exe", "thefinals.exe", "eft.exe",
+    "escapefromtarkov.exe", "arma3_x64.exe", "dayz_x64.exe", "assettocorsa.exe", "acc.exe", "iracingsim64dx11.exe",
+    "beamng.drive.x64.exe", "forzahorizon5.exe", "forzahorizon4.exe", "fc25.exe", "fc26.exe",
 ];
