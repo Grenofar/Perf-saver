@@ -901,28 +901,26 @@ fn url_encode(v: &str) -> String {
         .collect()
 }
 
-/// Petite fenêtre en haut à droite, au premier plan, qui ne prend pas le focus du jeu.
-fn show_overlay(app: &AppHandle, game: &str) {
-    open_overlay(app, &format!("overlay.html?game={}", url_encode(game)));
+/// Petite fenêtre en haut à gauche, au premier plan, qui ne prend pas le focus du jeu.
+fn show_overlay(app: &AppHandle, game: &str, exe: &str) {
+    open_overlay(app, &format!("overlay.html?game={}&exe={}", url_encode(game), url_encode(exe)), 300.0, 90.0);
 }
 
 #[tauri::command]
 fn notify_update(app: AppHandle, version: String) {
-    open_overlay(&app, &format!("overlay.html?kind=update&v={}", url_encode(&version)));
+    open_overlay(&app, &format!("overlay.html?kind=update&v={}", url_encode(&version)), 360.0, 104.0);
 }
 
-fn open_overlay(app: &AppHandle, page: &str) {
+fn open_overlay(app: &AppHandle, page: &str, w: f64, h: f64) {
     use tauri::{LogicalPosition, WebviewUrl, WebviewWindowBuilder};
-    if let Some(w) = app.get_webview_window("overlay") {
-        let _ = w.close();
+    if let Some(win) = app.get_webview_window("overlay") {
+        let _ = win.close();
     }
-    let (w, h) = (360.0, 104.0);
-    let (mut x, mut y) = (1400.0, 24.0);
+    let (mut x, mut y) = (24.0, 24.0);
     if let Ok(Some(m)) = app.primary_monitor() {
         let sf = m.scale_factor();
-        let size = m.size().to_logical::<f64>(sf);
         let pos = m.position().to_logical::<f64>(sf);
-        x = pos.x + size.width - w - 24.0;
+        x = pos.x + 24.0;
         y = pos.y + 24.0;
     }
     let url = WebviewUrl::App(page.into());
@@ -962,6 +960,55 @@ fn overlay_action(app: AppHandle, action: String) {
     }
 }
 
+const B64: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+fn base64_encode(data: &[u8]) -> String {
+    let mut out = String::with_capacity((data.len() + 2) / 3 * 4);
+    for chunk in data.chunks(3) {
+        let b0 = chunk[0];
+        let b1 = chunk.get(1).copied().unwrap_or(0);
+        let b2 = chunk.get(2).copied().unwrap_or(0);
+        out.push(B64[(b0 >> 2) as usize] as char);
+        out.push(B64[(((b0 & 0x03) << 4) | (b1 >> 4)) as usize] as char);
+        out.push(if chunk.len() > 1 { B64[(((b1 & 0x0f) << 2) | (b2 >> 6)) as usize] as char } else { '=' });
+        out.push(if chunk.len() > 2 { B64[(b2 & 0x3f) as usize] as char } else { '=' });
+    }
+    out
+}
+
+/// Icône de l'exécutable du jeu, extraite via .NET (System.Drawing) et mise en cache
+/// sur le disque. Renvoie une image encodée en base64 (data URI) ou rien si indisponible.
+#[tauri::command]
+async fn game_icon(exe: String) -> Option<String> {
+    if exe.trim().is_empty() {
+        return None;
+    }
+    use sha2::{Digest, Sha256};
+    let key: String = Sha256::digest(exe.to_lowercase().as_bytes()).iter().take(12).map(|b| format!("{b:02x}")).collect();
+    let dir = data_dir().join("icons");
+    let _ = std::fs::create_dir_all(&dir);
+    let png_path = dir.join(format!("{key}.png"));
+    if !png_path.exists() {
+        let script = "& { param($a, $b) \
+            try { \
+                Add-Type -AssemblyName System.Drawing; \
+                $i = [System.Drawing.Icon]::ExtractAssociatedIcon($a); \
+                if ($i) { $i.ToBitmap().Save($b, [System.Drawing.Imaging.ImageFormat]::Png) } \
+            } catch {} \
+        }";
+        let png_arg = png_path.to_string_lossy().to_string();
+        let _ = tauri::async_runtime::spawn_blocking(move || {
+            Command::new("powershell.exe")
+                .args(["-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-Command", script, exe.as_str(), png_arg.as_str()])
+                .creation_flags(NO_WINDOW)
+                .output()
+        })
+        .await;
+    }
+    let bytes = std::fs::read(&png_path).ok().filter(|b| !b.is_empty())?;
+    Some(format!("data:image/png;base64,{}", base64_encode(&bytes)))
+}
+
 /// Nom lisible pour les jeux connus (sinon le nom de l'exécutable sans « .exe »).
 fn pretty_game(exe: &str) -> String {
     let n = exe.to_lowercase();
@@ -989,24 +1036,25 @@ fn game_watcher(app: AppHandle) {
         let mut first = true;
         loop {
             std::thread::sleep(std::time::Duration::from_secs(if first { 3 } else { 5 }));
-            let games: Vec<String> = {
+            let games: Vec<(String, String)> = {
                 let state = app.state::<AppState>();
                 let Ok(mut sys) = state.sys.lock() else { continue };
                 refresh(&mut sys);
-                build_groups(&sys).into_iter().filter(|g| g.category == "jeu").map(|g| g.name).collect()
+                build_groups(&sys).into_iter().filter(|g| g.category == "jeu").map(|g| (g.name, g.exe)).collect()
             };
             let cfg: Config = load_json("config.json");
             let st: GameState = load_json("state.json");
             let enabled = cfg.overlay != Some(false) && cfg.terms_accepted.is_some();
-            for g in &games {
+            for (g, exe) in &games {
                 let k = g.to_lowercase();
                 if seen.insert(k) && !first && enabled && !st.active {
                     let label = pretty_game(g);
                     let a = app.clone();
-                    let _ = app.run_on_main_thread(move || show_overlay(&a, &label));
+                    let exe = exe.clone();
+                    let _ = app.run_on_main_thread(move || show_overlay(&a, &label, &exe));
                 }
             }
-            seen.retain(|k| games.iter().any(|g| g.to_lowercase() == *k));
+            seen.retain(|k| games.iter().any(|(g, _)| g.to_lowercase() == *k));
             first = false;
         }
     });
@@ -1678,6 +1726,7 @@ fn main() {
             set_overlay,
             overlay_action,
             notify_update,
+            game_icon,
             kill_many,
             show_window
         ])
