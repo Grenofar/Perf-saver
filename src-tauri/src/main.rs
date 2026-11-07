@@ -1112,12 +1112,23 @@ fn set_game_on_start(enabled: bool) {
 /// et délai minimal entre deux vidages (évite de ralentir le PC en boucle).
 const RAM_TRIM_THRESHOLD: f64 = 0.70;
 const RAM_TRIM_MIN_GAP: std::time::Duration = std::time::Duration::from_secs(120);
+/// Perf Saver vide sa propre mémoire de travail à cet intervalle, mode jeu ou non :
+/// l'app doit rester légère même quand elle tourne juste dans la zone de notification.
+const SELF_TRIM_GAP: std::time::Duration = std::time::Duration::from_secs(300);
 
 fn ram_guard(app: AppHandle) {
     std::thread::spawn(move || {
+        let me = std::process::id();
         let mut last: Option<std::time::Instant> = None;
+        let mut last_self: Option<std::time::Instant> = None;
         loop {
             std::thread::sleep(std::time::Duration::from_secs(30));
+
+            if last_self.map(|t| t.elapsed() >= SELF_TRIM_GAP).unwrap_or(true) {
+                win::trim(me);
+                last_self = Some(std::time::Instant::now());
+            }
+
             let st: GameState = load_json("state.json");
             if !st.active || !st.auto_trim {
                 continue;
@@ -1727,6 +1738,11 @@ fn main() {
                 if w.label() == "main" {
                     api.prevent_close();
                     let _ = w.hide();
+                    // Allège Perf Saver dès qu'il n'a plus de fenêtre visible.
+                    std::thread::spawn(|| {
+                        std::thread::sleep(std::time::Duration::from_millis(800));
+                        win::trim(std::process::id());
+                    });
                 }
             }
         })
