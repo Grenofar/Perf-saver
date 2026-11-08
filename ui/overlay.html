@@ -4,82 +4,110 @@
 <meta charset="utf-8">
 <style>
 html,body{margin:0;background:transparent;overflow:hidden;font:13px/1.4 "Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;color:#ededed;-webkit-font-smoothing:antialiased;user-select:none}
-.card{position:absolute;inset:4px;background:rgba(32,32,32,.97);border:1px solid #3b3b3b;border-radius:10px;display:flex;flex-direction:column;overflow:hidden;animation:in .22s ease-out}
+.card{position:absolute;inset:4px;background:rgba(30,30,30,.97);border:1px solid #3b3b3b;border-radius:10px;display:flex;flex-direction:column;overflow:hidden;animation:in .22s ease-out}
 @keyframes in{from{opacity:0;transform:translateX(-16px)}to{opacity:1;transform:none}}
-.row{display:flex;align-items:stretch;flex:1;min-height:0}
-.icon{width:52px;flex:none;display:flex;align-items:center;justify-content:center}
-.icon img{display:block;width:34px;height:34px;border-radius:8px}
-.body{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:2px;padding:8px 10px}
-.logo-img{position:relative;width:34px;height:34px}
-.logo-img img{position:absolute;inset:0;width:100%;height:100%;border-radius:8px;object-fit:cover}
-.t{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.s{color:#c7d9ea;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.x{align-self:flex-start;margin:4px 4px 0 0;background:none;border:0;color:#8a8a8a;cursor:pointer;font-size:15px;line-height:1;padding:2px 5px;border-radius:4px}
+.card.out{animation:out .18s ease-in forwards}
+@keyframes out{to{opacity:0;transform:translateX(-12px)}}
+.row{display:flex;align-items:center;gap:11px;padding:10px 6px 10px 12px}
+.ico{flex:none;width:36px;height:36px;border-radius:8px;overflow:hidden;background:#262626}
+.ico img{display:block;width:100%;height:100%;object-fit:cover}
+.body{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.k{color:#9a9a9a;font-size:11px;letter-spacing:.02em}
+.t{font-weight:600;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.s{color:#a8a8a8;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.x{align-self:flex-start;background:none;border:0;color:#8a8a8a;cursor:pointer;font-size:15px;line-height:1;padding:3px 6px;border-radius:4px}
 .x:hover{color:#fff;background:#333}
-.btns{display:flex;gap:8px;padding:0 10px 10px}
+/* Rappel du raccourci */
+.hint{display:flex;align-items:center;gap:10px;margin:0 12px;padding:8px 10px;background:#252525;border:1px solid #333;border-radius:8px}
+.keys{flex:none;display:flex;align-items:center;gap:4px;color:#8a8a8a;font-size:11px}
+kbd{display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:22px;padding:0 7px;box-sizing:border-box;font:600 11.5px "Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;color:#ededed;background:#303030;border:1px solid #474747;border-bottom-width:2px;border-radius:5px}
+.hint .txt{min-width:0;font-size:12px;color:#c9c9c9;line-height:1.3}
+.hint .txt{color:#9a9a9a;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hint .txt b{color:#ededed;font-weight:600;font-size:12px}
+.btns{display:flex;gap:8px;padding:10px 12px 12px}
 button.b{flex:1;font:inherit;font-size:12.5px;padding:6px 10px;border-radius:6px;border:1px solid #3b3b3b;background:#2b2b2b;color:#ededed;cursor:pointer}
 button.b:hover{background:#333}
 button.b.pri{background:#ededed;color:#141414;border-color:#ededed;font-weight:600}
-#game{display:none}
-.timer{position:absolute;left:0;bottom:0;height:2px;background:#5b9bd5;width:100%;animation:t 5s linear forwards}
+button.b.pri:hover{background:#fff}
+.timer{position:absolute;left:0;bottom:0;height:2px;background:#5b9bd5;width:100%;animation:t 7s linear forwards}
 @keyframes t{to{width:0}}
 .card:hover .timer{animation-play-state:paused}
+.hidden{display:none!important}
+/* Variante « rappel seul » : une seule ligne, sans boutons */
+.card.mini .row{padding:9px 6px 9px 10px;gap:10px}
+.card.mini .ico{width:28px;height:28px;border-radius:6px}
 </style>
 </head>
 <body>
 <div class="card" id="card">
   <div class="row">
-    <div class="icon" id="iconBlock">
-      <img src="icon.png" alt="" id="brandIcon">
-      <span class="logo-img" id="logoImg" style="display:none">
-        <img id="img" alt="">
-      </span>
-    </div>
+    <div class="ico"><img src="icon.png" alt="" id="img"></div>
     <div class="body">
-      <div class="t" id="t">Jeu détecté</div>
-      <div class="s" id="s">Alt+P : CPU, RAM en direct</div>
+      <div class="k" id="k">Jeu détecté</div>
+      <div class="t" id="t">Perf Saver</div>
+      <div class="s hidden" id="s"></div>
     </div>
+    <div class="keys hidden" id="miniKeys"><kbd>Alt</kbd>+<kbd>P</kbd></div>
     <button class="x" id="x" title="Fermer">×</button>
   </div>
-  <div class="btns">
-    <button class="b pri" id="open">Optimiser</button>
-    <button class="b" id="game">Mettre à jour</button>
+  <div class="hint" id="hint">
+    <div class="keys"><kbd>Alt</kbd>+<kbd>P</kbd></div>
+    <div class="txt"><b>Perfs en direct</b><br>CPU, RAM, GPU par-dessus le jeu</div>
+  </div>
+  <div class="btns" id="btns">
+    <button class="b" id="later">Plus tard</button>
+    <button class="b pri" id="main">Optimiser</button>
   </div>
   <div class="timer" id="timer"></div>
 </div>
 <script>
 const invoke = window.__TAURI__.core.invoke;
-const act = a => invoke("overlay_action", { action: a });
 const $ = id => document.getElementById(id);
 const q = new URLSearchParams(location.search);
-
-if (q.get("kind") === "update") {
-  $("t").textContent = "Perf Saver " + (q.get("v") || "") + " est disponible";
-  $("s").textContent = "Installe la mise à jour en un clic.";
-  $("open").textContent = "Plus tard";
-  $("game").textContent = "Mettre à jour";
-  $("game").style.display = "block";
-  $("timer").style.animationDuration = "12s";
-  $("open").onclick = () => act("close");
-  $("game").onclick = () => act("update");
-} else {
-  const game = q.get("game") || "";
-  $("t").textContent = game || "Jeu détecté";
-  $("open").textContent = "Optimiser";
-  $("open").onclick = () => act("open");
+const kind = q.get("kind") || "game";
+let closing = false;
+const act = a => {
+  if (closing) return;
+  closing = true;
+  $("card").classList.add("out");
+  setTimeout(() => invoke("overlay_action", { action: a }), 160);
+};
+const hide = id => $(id).classList.add("hidden");
+const show = id => $(id).classList.remove("hidden");
+const gameIcon = () => {
   const exe = q.get("exe") || "";
-  if (exe) {
-    invoke("game_icon", { exe }).then(src => {
-      if (src) {
-        $("img").src = src;
-        $("logoImg").style.display = "block";
-        $("brandIcon").style.display = "none";
-      }
-    }).catch(() => {});
-  }
+  if (!exe) return;
+  invoke("game_icon", { exe }).then(src => { if (src) $("img").src = src; }).catch(() => {});
+};
+
+if (kind === "update") {
+  $("k").textContent = "Mise à jour";
+  $("t").textContent = "Perf Saver " + (q.get("v") || "") + " est disponible";
+  $("s").textContent = "Installe-la en un clic.";
+  show("s");
+  hide("hint");
+  $("main").textContent = "Mettre à jour";
+  $("main").onclick = () => act("update");
+  $("timer").style.animationDuration = "12s";
+} else if (kind === "hint") {
+  // Mode jeu déjà actif : simple rappel du raccourci, sans bouton
+  $("card").classList.add("mini");
+  $("k").textContent = q.get("game") || "Jeu détecté";
+  $("t").textContent = "Perfs en jeu";
+  hide("hint");
+  hide("btns");
+  show("miniKeys");
+  $("timer").style.animationDuration = "6s";
+  gameIcon();
+} else {
+  $("k").textContent = "Jeu détecté";
+  $("t").textContent = q.get("game") || "Jeu";
+  $("main").onclick = () => act("open");
+  gameIcon();
 }
+$("later").onclick = () => act("close");
 $("x").onclick = () => act("close");
-// Disparaît après 5 s (la minuterie se met en pause au survol)
+// Disparaît tout seul (la minuterie se met en pause au survol)
 $("timer").addEventListener("animationend", () => act("close"));
 </script>
 </body>

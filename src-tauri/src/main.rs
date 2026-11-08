@@ -899,12 +899,22 @@ struct Config {
     /// Overlay de 5 s quand un jeu démarre (activé par défaut).
     #[serde(default)]
     overlay: Option<bool>,
+    /// Rappel « Alt+P » quand un jeu démarre (activé par défaut).
+    #[serde(default)]
+    hud_hint: Option<bool>,
 }
 
 #[tauri::command]
 fn set_overlay(enabled: bool) {
     let mut cfg: Config = load_json("config.json");
     cfg.overlay = Some(enabled);
+    save_json("config.json", &cfg);
+}
+
+#[tauri::command]
+fn set_hud_hint(enabled: bool) {
+    let mut cfg: Config = load_json("config.json");
+    cfg.hud_hint = Some(enabled);
     save_json("config.json", &cfg);
 }
 
@@ -918,12 +928,20 @@ fn url_encode(v: &str) -> String {
 
 /// Petite fenêtre en haut à gauche, au premier plan, qui ne prend pas le focus du jeu.
 fn show_overlay(app: &AppHandle, game: &str, exe: &str) {
-    open_overlay(app, &format!("overlay.html?game={}&exe={}", url_encode(game), url_encode(exe)), 300.0, 104.0);
+    open_overlay(app, &format!("overlay.html?game={}&exe={}", url_encode(game), url_encode(exe)), 320.0, 168.0);
+}
+
+/// Simple rappel du raccourci Alt+P (mode jeu déjà actif ou encart complet désactivé).
+fn show_hud_hint(app: &AppHandle, game: &str, exe: &str) {
+    if app.get_webview_window("hud").is_some_and(|w| w.is_visible().unwrap_or(false)) {
+        return;
+    }
+    open_overlay(app, &format!("overlay.html?kind=hint&game={}&exe={}", url_encode(game), url_encode(exe)), 300.0, 66.0);
 }
 
 #[tauri::command]
 fn notify_update(app: AppHandle, version: String) {
-    open_overlay(&app, &format!("overlay.html?kind=update&v={}", url_encode(&version)), 360.0, 104.0);
+    open_overlay(&app, &format!("overlay.html?kind=update&v={}", url_encode(&version)), 360.0, 136.0);
 }
 
 fn open_overlay(app: &AppHandle, page: &str, w: f64, h: f64) {
@@ -1009,6 +1027,12 @@ fn open_hud(app: &AppHandle) {
 }
 
 fn toggle_hud(app: &AppHandle) {
+    // L'encart « jeu détecté » a rempli son rôle dès qu'on ouvre le HUD
+    if let Some(o) = app.get_webview_window("overlay") {
+        if !o.url().map(|u| u.as_str().contains("kind=update")).unwrap_or(false) {
+            let _ = o.close();
+        }
+    }
     if let Some(w) = app.get_webview_window("hud") {
         if w.is_visible().unwrap_or(false) {
             let _ = w.hide();
@@ -1123,9 +1147,11 @@ fn game_watcher(app: AppHandle) {
             let running: std::collections::HashSet<String> = games.iter().map(|(g, _)| g.to_lowercase()).collect();
             let cfg: Config = load_json("config.json");
             let st: GameState = load_json("state.json");
-            let enabled = cfg.overlay != Some(false) && cfg.terms_accepted.is_some();
+            let full = cfg.overlay != Some(false) && !st.active;
+            let hint = cfg.hud_hint != Some(false);
+            let enabled = cfg.terms_accepted.is_some() && (full || hint);
 
-            if enabled && !st.active {
+            if enabled {
                 for (k, exe) in std::mem::take(&mut pending) {
                     if !running.contains(&k) {
                         continue;
@@ -1133,7 +1159,13 @@ fn game_watcher(app: AppHandle) {
                     if let Some((g, _)) = games.iter().find(|(g, _)| g.to_lowercase() == k) {
                         let label = pretty_game(g);
                         let a = app.clone();
-                        let _ = app.run_on_main_thread(move || show_overlay(&a, &label, &exe));
+                        let _ = app.run_on_main_thread(move || {
+                            if full {
+                                show_overlay(&a, &label, &exe)
+                            } else {
+                                show_hud_hint(&a, &label, &exe)
+                            }
+                        });
                     }
                 }
             } else {
@@ -1844,6 +1876,7 @@ fn main() {
             set_game_on_start,
             set_game,
             set_overlay,
+            set_hud_hint,
             overlay_action,
             notify_update,
             game_icon,
